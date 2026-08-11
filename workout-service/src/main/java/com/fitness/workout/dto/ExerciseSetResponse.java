@@ -1,0 +1,12 @@
+package com.fitness.workout.dto;
+
+import java.math.BigDecimal;
+
+public record ExerciseSetResponse(
+        Long id,
+        Integer setNumber,
+        BigDecimal weightKg,
+        Integer reps,
+        Integer rpe
+) {
+}

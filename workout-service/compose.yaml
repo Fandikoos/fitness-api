@@ -1,0 +1,13 @@
+services:
+  mysql:
+    image: 'mysql:latest'
+    environment:
+      # MYSQL_DATABASE crea automáticamente este schema al arrancar el contenedor.
+      # Cada microservicio tendrá su propio schema (workout_db, analytics_db, etc.)
+      # dentro del mismo servidor MySQL, manteniendo aislamiento lógico de datos.
+      - 'MYSQL_DATABASE=workout_db'
+      - 'MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}'
+    ports:
+      # 3307 en tu PC → 3306 dentro del contenedor.
+      # Evita conflicto con MySQL instalado localmente que ya usa el 3306.
+      - '3307:3306'
