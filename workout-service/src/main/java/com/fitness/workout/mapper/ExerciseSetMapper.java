@@ -7,6 +7,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import java.util.List;
+
 /**
  * Mapper de MapStruct para convertir entre ExerciseSetEntity y sus DTOs.
  *
@@ -32,4 +34,7 @@ public interface ExerciseSetMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "routineExercise", ignore = true)
     void updateEntity(ExerciseSetRequest request, @MappingTarget ExerciseSetEntity entity);
+
+    // MapStruct reutiliza toResponse() internamente para mapear cada elemento de la lista.
+    List<ExerciseSetResponse> toResponseList(List<ExerciseSetEntity> entities);
 }

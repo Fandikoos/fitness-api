@@ -4,6 +4,8 @@ import com.fitness.workout.dto.RoutineExerciseResponse;
 import com.fitness.workout.entity.RoutineExerciseEntity;
 import org.mapstruct.Mapper;
 
+import java.util.List;
+
 /**
  * Mapper de MapStruct para convertir RoutineExerciseEntity a su DTO de respuesta.
  *
@@ -18,4 +20,7 @@ import org.mapstruct.Mapper;
 public interface RoutineExerciseMapper {
 
     RoutineExerciseResponse toResponse(RoutineExerciseEntity entity);
+
+    // MapStruct reutiliza toResponse() internamente para mapear cada elemento de la lista.
+    List<RoutineExerciseResponse> toResponseList(List<RoutineExerciseEntity> entities);
 }

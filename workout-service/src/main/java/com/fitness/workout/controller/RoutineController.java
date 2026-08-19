@@ -43,6 +43,12 @@ public class RoutineController {
         return ResponseEntity.ok(routineService.findById(id));
     }
 
+    @GetMapping("/program/{programId}")
+    public ResponseEntity<List<RoutineResponse>> findByProgramId(@PathVariable Long programId) {
+        List<RoutineResponse> routines = routineService.findByProgramId(programId);
+        return ResponseEntity.ok(routines);
+    }
+
     // @RequestParam(required = false) hace que el parámetro sea opcional.
     // Si se pasa ?dayOfWeek=MONDAY, filtra por día; si no, devuelve todas.
     @GetMapping

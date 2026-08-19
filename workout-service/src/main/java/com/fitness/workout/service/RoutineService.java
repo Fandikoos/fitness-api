@@ -25,4 +25,6 @@ public interface RoutineService {
     RoutineResponse update(Long id, RoutineRequest request);
 
     void delete(Long id);
+
+    List<RoutineResponse> findByProgramId(Long programId);
 }

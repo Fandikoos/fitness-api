@@ -20,6 +20,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -130,6 +131,15 @@ public class RoutineServiceImpl implements RoutineService {
         // deleteById borra la rutina y, gracias a cascade ALL,
         // también todos sus ejercicios vinculados y sus series.
         routineRepository.deleteById(id);
+    }
+
+    @Override
+    public List<RoutineResponse> findByProgramId(Long programId) {
+        List<RoutineEntity> routineEntities = routineRepository.findByProgramId(programId);
+        if (ListUtils.isNullOrEmpty(routineEntities)) {
+            return new ArrayList<>();
+        }
+        return routineMapper.toResponseList(routineEntities);
     }
 
     /**

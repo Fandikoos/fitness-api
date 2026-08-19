@@ -46,7 +46,9 @@ Este es un proyecto de aprendizaje, así que:
 - Lombok para reducir boilerplate en entidades (@Builder, @Getter, @Setter...)
 - DTOs como records de Java (inmutables, sin Lombok)
 - DTOs separados de entidades JPA (nunca exponer entidades directamente en el API)
-- MapStruct para mappers (interfaces con @Mapper, componentModel = "spring")
+- MapStruct para mappers (interfaces con @Mapper, componentModel = "spring").
+  Incluir siempre `toResponseList(List<Entity>)` para mapeo de listas — MapStruct
+  reutiliza el `toResponse()` unitario internamente
 - Services: interfaz + implementación (ej. RoutineService → RoutineServiceImpl)
 - Nombres de tests: `should_doX_when_Y()`
 - Commits en español, formato: `tipo: descripción breve` (feat, fix, refactor, docs)

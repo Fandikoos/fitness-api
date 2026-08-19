@@ -5,6 +5,7 @@ import com.fitness.workout.enums.DayOfWeek;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +24,8 @@ public interface RoutineRepository extends JpaRepository<RoutineEntity, Long> {
 
     // Buscar una rutina por nombre exacto (útil para evitar duplicados)
     Optional<RoutineEntity> findByName(String name);
+
+    Optional<RoutineEntity> findByProgramIdAndDayOfWeek(Long programId, DayOfWeek dayOfWeek);
+
+    List<RoutineEntity> findByProgramId(Long programId);
 }

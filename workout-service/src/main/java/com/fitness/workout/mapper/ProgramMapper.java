@@ -6,6 +6,8 @@ import com.fitness.workout.entity.ProgramEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 /**
  * Mapper de MapStruct para convertir entre ProgramEntity y sus DTOs.
  *
@@ -27,4 +29,7 @@ public interface ProgramMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "routines", ignore = true)
     ProgramEntity toEntity(ProgramRequest request);
+
+    // MapStruct reutiliza toResponse() internamente para mapear cada elemento de la lista.
+    List<ProgramResponse> toResponseList(List<ProgramEntity> entities);
 }

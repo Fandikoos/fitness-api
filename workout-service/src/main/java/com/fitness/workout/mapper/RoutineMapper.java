@@ -6,6 +6,8 @@ import com.fitness.workout.entity.RoutineEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 /**
  * Mapper de MapStruct para convertir entre RoutineEntity y sus DTOs.
  *
@@ -33,4 +35,6 @@ public interface RoutineMapper {
     // routineExercises se gestionan por separado en el servicio (necesitan buscar templates)
     @Mapping(target = "routineExercises", ignore = true)
     RoutineEntity toEntity(RoutineRequest request);
+
+    List<RoutineResponse> toResponseList(List<RoutineEntity> entities);
 }

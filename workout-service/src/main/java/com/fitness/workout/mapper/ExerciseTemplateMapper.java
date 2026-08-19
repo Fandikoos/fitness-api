@@ -6,6 +6,8 @@ import com.fitness.workout.entity.ExerciseTemplateEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 /**
  * Mapper de MapStruct para convertir entre ExerciseTemplateEntity y sus DTOs.
  *
@@ -19,4 +21,7 @@ public interface ExerciseTemplateMapper {
 
     @Mapping(target = "id", ignore = true)
     ExerciseTemplateEntity toEntity(ExerciseTemplateRequest request);
+
+    // MapStruct reutiliza toResponse() internamente para mapear cada elemento de la lista.
+    List<ExerciseTemplateResponse> toResponseList(List<ExerciseTemplateEntity> entities);
 }
