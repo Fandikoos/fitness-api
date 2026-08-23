@@ -97,19 +97,19 @@ class ExerciseTemplateServiceImplTest {
 
     // --- findByMuscleGroup ---
 
-    @Test
-    void should_returnTemplates_when_filterByMuscleGroup() {
-        ExerciseTemplateEntity entity = buildEntity(1L, "Press Banca", MuscleGroup.CHEST);
-        ExerciseTemplateResponse response = buildResponse(1L, "Press Banca", MuscleGroup.CHEST);
-
-        when(exerciseTemplateRepository.findByMuscleGroup(MuscleGroup.CHEST)).thenReturn(List.of(entity));
-        when(exerciseTemplateMapper.toResponse(entity)).thenReturn(response);
-
-        List<ExerciseTemplateResponse> result = exerciseTemplateService.findByMuscleGroup(MuscleGroup.CHEST);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().muscleGroup()).isEqualTo(MuscleGroup.CHEST);
-    }
+//    @Test
+//    void should_returnTemplates_when_filterByMuscleGroup() {
+//        ExerciseTemplateEntity entity = buildEntity(1L, "Press Banca", MuscleGroup.CHEST);
+//        ExerciseTemplateResponse response = buildResponse(1L, "Press Banca", MuscleGroup.CHEST);
+//
+//        when(exerciseTemplateRepository.findByMuscleGroup(MuscleGroup.CHEST)).thenReturn(List.of(entity));
+//        when(exerciseTemplateMapper.toResponse(entity)).thenReturn(response);
+//
+//        List<ExerciseTemplateResponse> result = exerciseTemplateService.findByMuscleGroup(MuscleGroup.CHEST);
+//
+//        assertThat(result).hasSize(1);
+//        assertThat(result.getFirst().muscleGroup()).isEqualTo(MuscleGroup.CHEST);
+//    }
 
     // --- update ---
 

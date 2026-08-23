@@ -3,9 +3,12 @@ package com.fitness.workout.controller;
 import com.fitness.workout.config.ApiConfig;
 import com.fitness.workout.dto.ExerciseTemplateRequest;
 import com.fitness.workout.dto.ExerciseTemplateResponse;
+import com.fitness.workout.dto.PageResponse;
 import com.fitness.workout.enums.MuscleGroup;
 import com.fitness.workout.service.ExerciseTemplateService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,20 +43,20 @@ public class ExerciseTemplateController {
         return ResponseEntity.ok(exerciseTemplateService.findById(id));
     }
 
-    // @RequestParam(required = false) hace que el parámetro sea opcional.
-    // Si se pasa ?muscleGroup=CHEST, filtra por grupo muscular; si no, devuelve todos.
     @GetMapping
-    public ResponseEntity<List<ExerciseTemplateResponse>> findAll(
-            @RequestParam(required = false) MuscleGroup muscleGroup) {
-        List<ExerciseTemplateResponse> templates = muscleGroup != null
-                ? exerciseTemplateService.findByMuscleGroup(muscleGroup)
-                : exerciseTemplateService.findAll();
-        return ResponseEntity.ok(templates);
+    public ResponseEntity<List<ExerciseTemplateResponse>> findAll() {
+        return ResponseEntity.ok(exerciseTemplateService.findAll());
     }
 
-    @PutMapping("/{id}")
+    @GetMapping("/muscle-group/{muscleGroup}")
+    public ResponseEntity<PageResponse<ExerciseTemplateResponse>> findByMuscleGroup(
+            @PageableDefault(sort = "name")Pageable pageable, @PathVariable MuscleGroup muscleGroup) {
+        return ResponseEntity.ok(exerciseTemplateService.findByMuscleGroup(muscleGroup, pageable));
+    }
+
+                                                          @PutMapping("/{id}")
     public ResponseEntity<ExerciseTemplateResponse> update(@PathVariable Long id,
-                                                            @Valid @RequestBody ExerciseTemplateRequest request) {
+                                                          @Valid @RequestBody ExerciseTemplateRequest request) {
         return ResponseEntity.ok(exerciseTemplateService.update(id, request));
     }
 

@@ -2,7 +2,10 @@ package com.fitness.workout.service;
 
 import com.fitness.workout.dto.ExerciseTemplateRequest;
 import com.fitness.workout.dto.ExerciseTemplateResponse;
+import com.fitness.workout.dto.PageResponse;
 import com.fitness.workout.enums.MuscleGroup;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -20,9 +23,9 @@ public interface ExerciseTemplateService {
 
     List<ExerciseTemplateResponse> findAll();
 
-    List<ExerciseTemplateResponse> findByMuscleGroup(MuscleGroup muscleGroup);
-
     ExerciseTemplateResponse update(Long id, ExerciseTemplateRequest request);
+
+    PageResponse<ExerciseTemplateResponse> findByMuscleGroup(MuscleGroup muscleGroup, Pageable pageable);
 
     void delete(Long id);
 }
