@@ -11,3 +11,34 @@ services:
       # 3307 en tu PC → 3306 dentro del contenedor.
       # Evita conflicto con MySQL instalado localmente que ya usa el 3306.
       - '3307:3306'
+    # Healthcheck para que Spring Boot no arranque antes de que MySQL esté listo.
+    # Docker ejecuta este comando cada 'interval' segundos. Si falla 'retries' veces
+    # seguidas, el contenedor se marca como "unhealthy".
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  springboot:
+    # Profile "app": este servicio NO arranca con 'docker compose up' normal.
+    # Solo arranca si lo pides explícitamente con: docker compose --profile app up
+    # Esto permite seguir usando 'docker compose up -d' solo para la DB durante
+    # desarrollo con IntelliJ, y levantar todo junto cuando lo necesites.
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - 'SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/workout_db'
+      - 'SPRING_DATASOURCE_USERNAME=root'
+      - 'SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}'
+    ports:
+      - '8080:8080'
+    # depends_on con condition: espera a que el healthcheck de MySQL pase
+    # antes de arrancar Spring Boot. Sin esto, Spring Boot podría intentar
+    # conectarse a MySQL antes de que esté listo y fallar.
+    depends_on:
+      mysql:
+        condition: service_healthy

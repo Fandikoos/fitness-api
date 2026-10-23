@@ -29,9 +29,35 @@ Con MapStruct, solo definimos la interfaz y él genera ese código por nosotros.
 
 ---
 
-## Anatomía de un mapper
+## Modelo actual y sus mappers
 
-Tomemos `ExerciseSetMapper` como ejemplo (el más simple):
+El modelo del proyecto ha evolucionado. Ahora tenemos un árbol más complejo con
+**ejercicios-plantilla** (catálogo reutilizable) separados de los **ejercicios dentro
+de una rutina**:
+
+```
+ProgramEntity                    → programa de entrenamiento (ej. "PPL 4 días")
+  └── RoutineEntity              → día de rutina (ej. "Push Day - Lunes")
+        └── RoutineExerciseEntity → ejercicio asignado a esa rutina (orden, notas, series)
+              ├── ExerciseTemplateEntity → plantilla del ejercicio (nombre, imagen, grupo muscular)
+              └── ExerciseSetEntity      → serie individual (peso, reps, RPE)
+```
+
+Cada nivel tiene su propio mapper. La cadena completa de delegación es:
+
+```
+ProgramMapper (uses RoutineMapper)
+    └── RoutineMapper (uses RoutineExerciseMapper)
+            └── RoutineExerciseMapper (uses ExerciseTemplateMapper, ExerciseSetMapper)
+                    ├── ExerciseTemplateMapper
+                    └── ExerciseSetMapper
+```
+
+---
+
+## Los 5 mappers del proyecto
+
+### 1. ExerciseSetMapper (el más simple)
 
 ```java
 @Mapper(componentModel = "spring")
@@ -40,65 +66,119 @@ public interface ExerciseSetMapper {
     ExerciseSetResponse toResponse(ExerciseSetEntity entity);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "exercise", ignore = true)
+    @Mapping(target = "routineExercise", ignore = true)
     ExerciseSetEntity toEntity(ExerciseSetRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "routineExercise", ignore = true)
+    void updateEntity(ExerciseSetRequest request, @MappingTarget ExerciseSetEntity entity);
+
+    List<ExerciseSetResponse> toResponseList(List<ExerciseSetEntity> entities);
 }
 ```
 
-### Lo que tú escribes vs. lo que MapStruct genera
+Campos ignorados:
+- **id**: JPA lo genera con `@GeneratedValue`
+- **routineExercise**: la relación padre se establece en el servicio, no en el mapper
 
-Tú solo escribes la **interfaz** (el contrato). MapStruct genera la **implementación**
-(`ExerciseSetMapperImpl.java` en `target/generated-sources/`). Este es el código real
-que se ejecuta:
+El método `updateEntity()` usa `@MappingTarget` para **modificar un objeto existente**
+en vez de crear uno nuevo. Esto es clave para updates: cargas la entidad de la BD y
+actualizas sus campos, permitiendo que JPA haga dirty checking.
+
+### 2. ExerciseTemplateMapper
 
 ```java
-// GENERADO AUTOMÁTICAMENTE por MapStruct (ExerciseSetMapperImpl.java)
-@Component  // <-- Spring lo registra como bean, se puede inyectar
-public class ExerciseSetMapperImpl implements ExerciseSetMapper {
+@Mapper(componentModel = "spring")
+public interface ExerciseTemplateMapper {
 
-    @Override
-    public ExerciseSetResponse toResponse(ExerciseSetEntity entity) {
-        if (entity == null) return null;
+    ExerciseTemplateResponse toResponse(ExerciseTemplateEntity entity);
 
-        // MapStruct matchea por nombre: entity.getSetNumber() → setNumber del record
-        Long id = entity.getId();
-        Integer setNumber = entity.getSetNumber();
-        BigDecimal weightKg = entity.getWeightKg();
-        Integer reps = entity.getReps();
-        Integer rpe = entity.getRpe();
+    @Mapping(target = "id", ignore = true)
+    ExerciseTemplateEntity toEntity(ExerciseTemplateRequest request);
 
-        return new ExerciseSetResponse(id, setNumber, weightKg, reps, rpe);
-    }
-
-    @Override
-    public ExerciseSetEntity toEntity(ExerciseSetRequest request) {
-        if (request == null) return null;
-
-        // Usa el Builder de Lombok (gracias al lombok-mapstruct-binding)
-        // Nota: NO setea id ni exercise porque los marcamos con ignore = true
-        ExerciseSetEntity.ExerciseSetEntityBuilder builder = ExerciseSetEntity.builder();
-        builder.setNumber(request.setNumber());
-        builder.weightKg(request.weightKg());
-        builder.reps(request.reps());
-        builder.rpe(request.rpe());
-
-        return builder.build();
-    }
+    List<ExerciseTemplateResponse> toResponseList(List<ExerciseTemplateEntity> entities);
 }
 ```
 
-### ¿Cómo sabe MapStruct qué campo va con cuál?
+Es simple porque `ExerciseTemplateEntity` no tiene relaciones anidadas — es un catálogo
+plano de ejercicios (nombre, grupo muscular, imagen, vídeo).
 
-**Por nombre.** Si el campo se llama igual en origen y destino, lo mapea automáticamente:
-- `request.setNumber()` → `entity.setSetNumber()` (ambos se llaman `setNumber`)
-- `request.weightKg()` → `entity.setWeightKg()` (ambos se llaman `weightKg`)
+### 3. RoutineExerciseMapper
 
-Si los nombres no coincidieran, habría que indicarlo manualmente:
 ```java
-// Ejemplo hipotético: si en el DTO se llamara "peso" pero en la entidad "weightKg"
-@Mapping(source = "peso", target = "weightKg")
-ExerciseSetEntity toEntity(ExerciseSetRequest request);
+@Mapper(componentModel = "spring", uses = {ExerciseTemplateMapper.class, ExerciseSetMapper.class})
+public interface RoutineExerciseMapper {
+
+    RoutineExerciseResponse toResponse(RoutineExerciseEntity entity);
+
+    List<RoutineExerciseResponse> toResponseList(List<RoutineExerciseEntity> entities);
+}
 ```
+
+**No tiene `toEntity()`**. ¿Por qué? Porque crear un `RoutineExerciseEntity` requiere
+buscar el `ExerciseTemplateEntity` por su ID en la base de datos. MapStruct no puede
+hacer consultas a la BD, así que la creación se hace manualmente en el servicio.
+
+Usa dos mappers delegados:
+- `ExerciseTemplateMapper`: para convertir el template anidado dentro del response
+- `ExerciseSetMapper`: para convertir la lista de series
+
+### 4. RoutineMapper
+
+```java
+@Mapper(componentModel = "spring", uses = {RoutineExerciseMapper.class})
+public interface RoutineMapper {
+
+    @Mapping(source = "program.id", target = "programId")
+    @Mapping(source = "routineExercises", target = "exercises")
+    RoutineResponse toResponse(RoutineEntity entity);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "program", ignore = true)
+    @Mapping(target = "routineExercises", ignore = true)
+    RoutineEntity toEntity(RoutineRequest request);
+
+    List<RoutineResponse> toResponseList(List<RoutineEntity> entities);
+}
+```
+
+Este mapper tiene **dos `@Mapping` interesantes en `toResponse`**:
+
+- `source = "program.id", target = "programId"`: extrae solo el ID del programa padre,
+  en vez de incluir todo el objeto `ProgramEntity`. Así el DTO de respuesta tiene un
+  `programId` (Long) en vez de un programa completo, evitando referencias circulares.
+- `source = "routineExercises", target = "exercises"`: renombra el campo porque en la
+  entidad se llama `routineExercises` pero en el DTO queremos exponerlo como `exercises`
+  (más limpio para la API).
+
+Campos ignorados en `toEntity()`:
+- **program**: se establece en el servicio a partir del `programId` del request
+- **routineExercises**: se gestionan por separado (necesitan buscar templates en la BD)
+
+### 5. ProgramMapper
+
+```java
+@Mapper(componentModel = "spring", uses = {RoutineMapper.class})
+public interface ProgramMapper {
+
+    ProgramResponse toResponse(ProgramEntity entity);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "routines", ignore = true)
+    ProgramEntity toEntity(ProgramRequest request);
+
+    List<ProgramResponse> toResponseList(List<ProgramEntity> entities);
+}
+```
+
+Es el mapper de nivel más alto. Delega a `RoutineMapper` para convertir las rutinas
+hijas, que a su vez delega a los mappers inferiores. Así se convierte el árbol completo
+automáticamente.
+
+Las rutinas se ignoran en `toEntity()` porque no se crean inline con el programa — se
+gestionan por separado (un programa se crea primero, y luego se le añaden rutinas).
 
 ---
 
@@ -114,7 +194,19 @@ Sin esto, MapStruct genera una clase normal y tendrías que instanciarla a mano.
 "No mapees este campo, déjalo en null." Lo usamos para:
 - **id**: porque JPA lo genera automáticamente con `@GeneratedValue`
 - **createdAt**: porque lo setea el `@PrePersist` de la entidad
-- **exercise/routine**: porque la relación padre-hijo se establece aparte (ver @AfterMapping)
+- **relaciones padre** (program, routineExercise): porque se establecen manualmente en el servicio
+
+### `@Mapping(source = "...", target = "...")`
+
+Mapeo explícito cuando los nombres no coinciden entre origen y destino:
+
+```java
+// El campo se llama "routineExercises" en la entidad pero "exercises" en el DTO
+@Mapping(source = "routineExercises", target = "exercises")
+
+// Navega dentro de un objeto anidado para extraer solo un campo
+@Mapping(source = "program.id", target = "programId")
+```
 
 ### `@MappingTarget`
 
@@ -138,163 +230,83 @@ Encadena mappers. Cuando MapStruct necesita convertir un tipo que no sabe maneja
 declarados en `uses` un método que sepa hacer esa conversión.
 
 ```java
-@Mapper(componentModel = "spring", uses = {ExerciseSetMapper.class})
-public interface ExerciseMapper { ... }
+@Mapper(componentModel = "spring", uses = {ExerciseTemplateMapper.class, ExerciseSetMapper.class})
+public interface RoutineExerciseMapper { ... }
 ```
 
-Esto genera un código donde `ExerciseMapperImpl` inyecta `ExerciseSetMapper` y lo usa:
+Esto genera un código donde `RoutineExerciseMapperImpl` inyecta ambos mappers y los usa:
 
 ```java
-// Código generado: ExerciseMapperImpl inyecta y usa ExerciseSetMapper
+// Código generado: RoutineExerciseMapperImpl inyecta y usa los mappers delegados
+@Autowired
+private ExerciseTemplateMapper exerciseTemplateMapper;
 @Autowired
 private ExerciseSetMapper exerciseSetMapper;
-
-// Cuando necesita convertir la lista de sets, delega a exerciseSetMapper
-List<ExerciseSetResponse> list = new ArrayList<>();
-for (ExerciseSetEntity set : entity.getSets()) {
-    list.add(exerciseSetMapper.toResponse(set));  // <-- delega aquí
-}
-```
-
-La cadena completa en nuestro proyecto:
-```
-RoutineMapper (uses ExerciseMapper)
-    └── ExerciseMapper (uses ExerciseSetMapper)
-            └── ExerciseSetMapper
 ```
 
 ---
 
-## @AfterMapping y el problema de la bidireccionalidad
+## ¿Por qué algunos mappers no tienen `toEntity()`?
 
-### El problema
+En la versión anterior del proyecto, todos los mappers tenían `toEntity()` y se usaba
+`@AfterMapping` para establecer las relaciones bidireccionales (ej. `set.setExercise(exercise)`).
 
-Cuando MapStruct convierte un `ExerciseRequest` a `ExerciseEntity`, hace esto:
+En el modelo actual, `RoutineExerciseMapper` **no tiene `toEntity()`** porque crear un
+`RoutineExerciseEntity` requiere buscar el `ExerciseTemplateEntity` en la base de datos
+por su ID. MapStruct solo sabe copiar campos — no puede hacer consultas a repositorios.
 
-1. Crea el `ExerciseEntity` con nombre, imageUrl, orderInRoutine, notes
-2. Convierte cada `ExerciseSetRequest` a `ExerciseSetEntity` (delegando a ExerciseSetMapper)
-3. Mete los sets en la lista `exercise.sets`
-
-Pero hay un problema: **los sets no saben a qué ejercicio pertenecen**. Así queda:
-
-```
-ExerciseEntity (id=null, name="Press Banca")
-  └── sets:
-       ├── ExerciseSetEntity (setNumber=1, weightKg=80, exercise=NULL)  ← ¡NULL!
-       └── ExerciseSetEntity (setNumber=2, weightKg=85, exercise=NULL)  ← ¡NULL!
-```
-
-Si intentas guardar esto en la BD, JPA falla porque `exercise_id` es NOT NULL.
-El set necesita saber "yo pertenezco a este ejercicio" para que JPA escriba la FK.
-
-### La solución: @AfterMapping
+Por eso la creación se hace manualmente en el servicio:
 
 ```java
-@AfterMapping
-default void setExerciseInSets(@MappingTarget ExerciseEntity entity) {
-    if (entity.getSets() != null) {
-        entity.getSets().forEach(set -> set.setExercise(entity));
-    }
-}
+// En el servicio: se busca el template y se arma la entidad manualmente
+ExerciseTemplateEntity template = exerciseTemplateRepository
+    .findById(request.exerciseTemplateId())
+    .orElseThrow(...);
+
+RoutineExerciseEntity routineExercise = RoutineExerciseEntity.builder()
+    .routine(routine)              // relación padre
+    .exerciseTemplate(template)    // buscado en la BD
+    .orderInRoutine(request.orderInRoutine())
+    .notes(request.notes())
+    .build();
 ```
 
-Este método se ejecuta **justo después** de que MapStruct termine el mapeo automático.
-Lo que hace es recorrer cada set y decirle "tu padre es este ejercicio":
-
-```
-ExerciseEntity (id=null, name="Press Banca")     ← este objeto
-  └── sets:                                         │
-       ├── ExerciseSetEntity (exercise= ────────────┘)  ← ahora apunta al padre
-       └── ExerciseSetEntity (exercise= ────────────┘)  ← ahora apunta al padre
-```
-
-### ¿Por qué MapStruct no puede hacer esto solo?
-
-Porque es una **referencia circular**: el ejercicio contiene los sets, y cada set
-referencia al ejercicio. MapStruct no puede setear `set.exercise = exercise` durante
-la construcción del ejercicio porque el ejercicio aún no existe (se está construyendo).
-Por eso necesitamos el @AfterMapping: primero se crea todo, y después se enlazan.
-
-### Lo mismo pasa un nivel arriba
-
-En `RoutineMapper`, el `@AfterMapping` hace exactamente lo mismo pero entre Routine y Exercises:
-
-```java
-@AfterMapping
-default void setRoutineInExercises(@MappingTarget RoutineEntity entity) {
-    if (entity.getExercises() != null) {
-        entity.getExercises().forEach(exercise -> exercise.setRoutine(entity));
-    }
-}
-```
-
-Sin esto, los ejercicios tendrían `routine_id = NULL` en la BD.
-
-### El código generado completo (ExerciseMapperImpl.toEntity)
-
-```java
-public ExerciseEntity toEntity(ExerciseRequest request) {
-    // 1. Crea el builder
-    ExerciseEntity.ExerciseEntityBuilder builder = ExerciseEntity.builder();
-
-    // 2. Mapea campos simples (por nombre)
-    builder.name(request.name());
-    builder.imageUrl(request.imageUrl());
-    builder.orderInRoutine(request.orderInRoutine());
-    builder.notes(request.notes());
-
-    // 3. Convierte la lista de sets (delega a ExerciseSetMapper)
-    builder.sets(exerciseSetRequestListToExerciseSetEntityList(request.sets()));
-
-    // 4. Construye el objeto
-    ExerciseEntity result = builder.build();
-
-    // 5. DESPUÉS de construir: ejecuta @AfterMapping → enlaza sets con exercise
-    setExerciseInSets(result);
-
-    return result;
-}
-```
+Esto también elimina la necesidad de `@AfterMapping` — las relaciones bidireccionales
+se establecen directamente al construir la entidad en el servicio.
 
 ---
 
 ## Visualización del flujo completo
 
-Cuando llega un JSON para crear una rutina:
+### Crear un programa (solo mapea nombre y descripción)
 
 ```
-POST /api/routines
-{
-  "name": "Push Day",
-  "dayOfWeek": "MONDAY",
-  "exercises": [
-    {
-      "name": "Press Banca",
-      "orderInRoutine": 1,
-      "sets": [
-        { "setNumber": 1, "weightKg": 80, "reps": 10, "rpe": 7 },
-        { "setNumber": 2, "weightKg": 85, "reps": 8, "rpe": 8 }
-      ]
-    }
-  ]
-}
+POST /api/programs
+{ "name": "Push Pull Legs", "description": "Rutina PPL de 6 días" }
+
+ProgramRequest → ProgramMapper.toEntity() → ProgramEntity (sin rutinas, se añaden después)
 ```
 
-El flujo de mapeo es:
+### Obtener un programa con todo el árbol
 
 ```
-RoutineRequest
+GET /api/programs/1
+
+ProgramEntity
   │
-  ├─ RoutineMapper.toEntity()
-  │    ├─ Mapea name, dayOfWeek, description
-  │    ├─ Para cada ExerciseRequest → delega a ExerciseMapper.toEntity()
-  │    │    ├─ Mapea name, imageUrl, orderInRoutine, notes
-  │    │    ├─ Para cada ExerciseSetRequest → delega a ExerciseSetMapper.toEntity()
-  │    │    │    └─ Mapea setNumber, weightKg, reps, rpe (ignora id y exercise)
-  │    │    └─ @AfterMapping: set.setExercise(exercise) para cada set
-  │    └─ @AfterMapping: exercise.setRoutine(routine) para cada exercise
+  ├─ ProgramMapper.toResponse()
+  │    ├─ Mapea name, description, active, createdAt
+  │    └─ Para cada RoutineEntity → delega a RoutineMapper.toResponse()
+  │         ├─ Mapea name, dayOfWeek, description, createdAt
+  │         ├─ Mapea program.id → programId
+  │         └─ Para cada RoutineExerciseEntity → delega a RoutineExerciseMapper.toResponse()
+  │              ├─ Mapea orderInRoutine, notes
+  │              ├─ ExerciseTemplateEntity → delega a ExerciseTemplateMapper.toResponse()
+  │              │    └─ Mapea name, muscleGroup, imageUrl, videoUrl
+  │              └─ Para cada ExerciseSetEntity → delega a ExerciseSetMapper.toResponse()
+  │                   └─ Mapea setNumber, weightKg, reps, rpe
   │
-  └─ Resultado: RoutineEntity con todo el árbol enlazado, listo para save()
+  └─ Resultado: ProgramResponse con todo el árbol convertido a DTOs
 ```
 
 ---
@@ -304,8 +316,10 @@ RoutineRequest
 El código que MapStruct genera está en:
 ```
 workout-service/target/generated-sources/annotations/com/fitness/workout/mapper/
-├── ExerciseMapperImpl.java
 ├── ExerciseSetMapperImpl.java
+├── ExerciseTemplateMapperImpl.java
+├── ProgramMapperImpl.java
+├── RoutineExerciseMapperImpl.java
 └── RoutineMapperImpl.java
 ```
 
