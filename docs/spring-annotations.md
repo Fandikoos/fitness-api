@@ -1,152 +1,200 @@
-# Anotaciones de Spring Boot — Guia practica
+# Anotaciones de Spring Boot — Guía práctica
 
-Referencia viva de anotaciones que usamos en el proyecto, explicadas con ejemplos
-reales del codigo. Se ira ampliando conforme aparezcan nuevas anotaciones.
-
----
-
-## Indice
-
-1. [@Configuration](#configuration)
-2. [@Bean](#bean)
-3. [@Component, @Service, @Repository, @Controller](#estereotipos)
-4. [@RestController y @RequestMapping](#rest)
+> **Prerequisito:** Lee primero [`spring-ioc-container.md`](./spring-ioc-container.md).
+> Explica qué es el contenedor, los beans y los singletons. Sin ese contexto,
+> las anotaciones son solo "magia" sin entender por qué existen.
 
 ---
 
-## @Configuration
+## Índice
 
-**Que hace:** Marca una clase como "fabrica de configuracion". Le dice a Spring:
-"dentro de esta clase hay metodos que producen objetos que quiero que gestiones tu".
+1. [Estereotipos: @Component, @Service, @Repository, @Controller](#estereotipos)
+2. [@Configuration y @Bean — cuándo usar cada uno](#configuration-bean)
+3. [@RestController y @RequestMapping](#rest)
+4. [@Transactional](#transactional)
+5. [@ExceptionHandler y @RestControllerAdvice](#exception-handler)
 
-**Cuando usarla:** Cuando necesitas crear y configurar objetos que no son simples
-servicios/repositorios, sino configuracion tecnica (CORS, seguridad, clientes HTTP,
-serializacion, etc.).
+---
 
-**Ejemplo real del proyecto — `CorsConfig.java`:**
+## Estereotipos: @Component, @Service, @Repository, @Controller {#estereotipos}
+
+Estas cuatro anotaciones hacen lo mismo a nivel técnico: le dicen a Spring
+"escaneame, crea una instancia mía y guárdala en el contenedor".
+
+```
+@Component        ← genérica: "esto es un bean de Spring"
+   │
+   ├── @Service        ← "esto es lógica de negocio"
+   ├── @Repository     ← "esto accede a datos"
+   └── @Controller     ← "esto maneja peticiones HTTP"
+```
+
+La diferencia **no es técnica, es semántica**, con una excepción:
+
+| Anotación      | Comportamiento extra                                             |
+|----------------|------------------------------------------------------------------|
+| `@Component`   | Ninguno. Bean genérico.                                          |
+| `@Service`     | Ninguno. Solo indica que es lógica de negocio (documentación).  |
+| `@Repository`  | Traduce excepciones de BD (SQLException, etc.) a excepciones de Spring (`DataAccessException`). |
+| `@Controller`  | Habilita el manejo de peticiones HTTP y resolución de vistas.    |
+
+### Por qué hay cuatro si hacen lo mismo
+
+Para que el código sea **autodocumentado**. Al leer la anotación ya sabes la
+responsabilidad de la clase sin leer su implementación.
 
 ```java
-@Configuration  // Sin esto, Spring ignora la clase y nunca ejecuta los @Bean de dentro
-public class CorsConfig {
+// Sin leer nada más, ya sabes qué hace cada clase:
+@Repository  → accede a datos
+@Service     → lógica de negocio
+@Controller  → maneja peticiones HTTP
+@Component   → utilidad/helper sin categoría clara
+```
 
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        // ...
+### Cuándo usar @Component
+
+Para clases que no encajan en las otras tres categorías: validadores, utilidades,
+convertidores, etc. En nuestro proyecto:
+
+```java
+// RoutineValidator no es un Service (no orquesta flujo completo),
+// no es un Repository (no accede a BD directamente), no es un Controller.
+// Es una utilidad de dominio → @Component es la elección correcta.
+@Component
+public class RoutineValidator {
+    private final RoutineRepository routineRepository;
+
+    public RoutineValidator(RoutineRepository routineRepository) {
+        this.routineRepository = routineRepository;
     }
-}
-```
-
-**Analogia:** `@Configuration` es el cartel de "ABIERTO" en una tienda. Sin el,
-Spring pasa de largo aunque dentro haya productos (`@Bean`).
-
-**Diferencia con `@Component`:** Tecnicamente `@Configuration` incluye `@Component`
-(Spring la detecta igual en el escaneo). La diferencia es que `@Configuration`
-garantiza que los metodos `@Bean` se ejecutan en modo "proxy": si un `@Bean` llama
-a otro `@Bean` dentro de la misma clase, Spring devuelve la misma instancia
-(singleton), no crea una nueva. Con `@Component` simple, cada llamada crearia
-un objeto nuevo.
-
----
-
-## @Bean
-
-**Que hace:** Marca un metodo para que Spring ejecute ese metodo al arrancar,
-guarde el objeto que devuelve en su contenedor (ApplicationContext), y lo inyecte
-automaticamente donde se necesite.
-
-**Cuando usarla:** Cuando necesitas que Spring gestione un objeto que TU construyes
-manualmente (porque necesita configuracion especial, o es de una libreria externa
-y no puedes ponerle `@Component`).
-
-**Ejemplo real del proyecto:**
-
-```java
-@Bean  // "Spring, ejecuta esto al arrancar y guarda el resultado"
-public WebMvcConfigurer corsConfigurer() {
-    return new WebMvcConfigurer() {
-        @Override
-        public void addCorsMappings(CorsRegistry registry) {
-            registry.addMapping("/**")
-                    .allowedOrigins("http://localhost:4200");
-        }
-    };
-}
-```
-
-**Flujo completo:**
-1. Spring arranca y escanea las clases `@Configuration`
-2. Encuentra el metodo `corsConfigurer()` marcado con `@Bean`
-3. Lo ejecuta y guarda el `WebMvcConfigurer` devuelto en su contenedor
-4. Cuando Spring configura el servidor web, busca todos los `WebMvcConfigurer`
-   en su contenedor y aplica su configuracion (en este caso, las reglas CORS)
-
-**@Bean vs @Component — cuando usar cada una:**
-
-| Situacion | Usa |
-|-----------|-----|
-| Clase tuya que es un servicio/repositorio/controller | `@Component` (o sus variantes) |
-| Objeto que necesita configuracion manual | `@Bean` dentro de `@Configuration` |
-| Clase de una libreria externa (no puedes modificarla) | `@Bean` dentro de `@Configuration` |
-
-Ejemplo: no puedes ponerle `@Component` a `WebMvcConfigurer` porque es una interfaz
-de Spring, no una clase tuya. Por eso usas `@Bean` para decirle a Spring
-"aqui tienes la implementacion que quiero que uses".
-
----
-
-## @Component, @Service, @Repository, @Controller {#estereotipos}
-
-Estas cuatro son "estereotipos" — variantes de lo mismo con distinto nombre
-para expresar intencion.
-
-**Que hacen:** Marcan una clase para que Spring la detecte automaticamente
-(component scanning), cree una instancia y la guarde en su contenedor.
-
-```
-@Component        <-- generica, "esto es un bean de Spring"
-   |
-   +-- @Service        <-- "esto es logica de negocio"
-   +-- @Repository     <-- "esto accede a datos" (+ traduce excepciones de BD)
-   +-- @Controller     <-- "esto maneja peticiones HTTP"
-```
-
-**Las cuatro hacen lo mismo a nivel tecnico** (registrar la clase como bean),
-pero:
-- `@Repository` ademas traduce excepciones de la BD a excepciones de Spring
-- `@Controller` ademas habilita el manejo de peticiones web
-- `@Service` es puramente semantica (no añade comportamiento extra)
-
-**Ejemplo real del proyecto:**
-
-```java
-// Spring detecta esta clase, crea una instancia de RoutineServiceImpl,
-// y la inyecta donde alguien pida un RoutineService
-@Service
-public class RoutineServiceImpl implements RoutineService {
     // ...
 }
 ```
 
-**Por que NO usar `@Component` para todo:** Funciona, pero pierdes claridad.
-Al leer `@Service` sabes que es logica de negocio; al leer `@Repository`
-sabes que accede a datos. Es documentacion implicita.
+### El component scanning: cómo Spring encuentra tus clases
+
+Spring escanea automáticamente todos los paquetes **a partir del paquete donde
+está `@SpringBootApplication`**. En este proyecto:
+
+```
+com.fitness.workout          ← @SpringBootApplication está aquí
+    ├── service/             ← escaneado ✓
+    ├── repository/          ← escaneado ✓
+    ├── controller/          ← escaneado ✓
+    ├── validation/          ← escaneado ✓
+    └── config/              ← escaneado ✓
+```
+
+Si pusieras una clase con `@Component` fuera de este árbol de paquetes,
+Spring no la encontraría y tendrías un `NoSuchBeanDefinitionException`.
+
+---
+
+## @Configuration y @Bean — cuándo usar cada uno {#configuration-bean}
+
+Hay dos formas de registrar beans. Confundirlas es uno de los errores más frecuentes.
+
+### @Component (y variantes): para TUS clases
+
+```java
+// ✅ Clase que tú escribes → puedes anotarla directamente
+@Service
+public class RoutineServiceImpl implements RoutineService { ... }
+```
+
+### @Bean: para objetos externos o con configuración especial
+
+`@Bean` se usa **dentro de una clase `@Configuration`** para crear objetos que:
+- Pertenecen a una librería externa (no puedes añadirles `@Component`)
+- Necesitan configuración especial al construirse
+
+```java
+@Configuration
+public class JacksonConfig {
+
+    // Jackson es una librería externa → no puedes ponerle @Component a ObjectMapper
+    // Pero quieres que Spring lo gestione → @Bean
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        // Configuración especial que no puedes hacer con @Component
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.registerModule(new JavaTimeModule());
+        return mapper;
+    }
+}
+```
+
+### La tabla de decisión
+
+```
+¿Es una clase que tú escribes?
+  → @Component / @Service / @Repository / @Controller
+
+¿Es una clase de una librería (Jackson, HttpClient, etc.)?
+  → @Bean dentro de @Configuration
+
+¿Es tu clase pero necesita configuración compleja al crearse?
+  → Puedes usar @Bean (más control) o @Component con @Value/@PostConstruct
+```
+
+### Por qué @Configuration no es lo mismo que @Component
+
+`@Configuration` tiene un comportamiento especial: Spring crea un **proxy** de la clase.
+Esto importa cuando tienes métodos `@Bean` que se llaman entre sí:
+
+```java
+@Configuration
+public class DataConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        return new HikariDataSource(/* configuración */);
+    }
+
+    @Bean
+    public EntityManagerFactory entityManagerFactory() {
+        // Llama a dataSource() — con @Configuration, Spring intercepta esta llamada
+        // y devuelve el bean ya creado (singleton). No crea uno nuevo.
+        return factory(dataSource());
+    }
+
+    @Bean
+    public TransactionManager transactionManager() {
+        // También llama a dataSource() — sigue siendo el mismo objeto
+        return new JpaTransactionManager(dataSource());
+    }
+}
+```
+
+**Con `@Configuration`:** las tres llaman a `dataSource()` → todas reciben
+**la misma instancia** → un solo pool de conexiones. ✅
+
+**Si pusieras solo `@Component`:** no hay proxy → cada llamada a `dataSource()`
+ejecuta el método de verdad → crea un objeto nuevo → tres pools distintos. ❌
+
+**Regla práctica:** Si tu clase `@Configuration` tiene métodos `@Bean` que se llaman
+entre sí, el proxy importa. Si no, la diferencia es irrelevante para el resultado.
 
 ---
 
 ## @RestController y @RequestMapping {#rest}
 
-**@RestController** = `@Controller` + `@ResponseBody`. Le dice a Spring:
-"esta clase maneja peticiones HTTP y todo lo que devuelvan sus metodos
-se serializa directamente a JSON (no busques una vista/template HTML)".
+### @RestController
 
-**@RequestMapping** = define el prefijo de URL para todos los endpoints
-de ese controller.
+Es una combinación de dos anotaciones:
 
-**Ejemplo real del proyecto:**
+```
+@RestController = @Controller + @ResponseBody
+```
+
+- `@Controller`: registra la clase como bean que maneja peticiones HTTP
+- `@ResponseBody`: indica que el valor de retorno de los métodos se serializa a JSON
+  directamente (no busca una vista/template HTML)
 
 ```java
-@RestController  // Cada metodo devuelve JSON automaticamente
-@RequestMapping(ApiConfig.API_BASE_URL + "routines")  // Prefijo: /api/workout-service/routines
+@RestController  // Cada método devuelve JSON automáticamente
+@RequestMapping("/api/workout-service/routines")
 public class RoutineController {
 
     @GetMapping         // GET /api/workout-service/routines
@@ -156,46 +204,47 @@ public class RoutineController {
     public RoutineResponse getById(@PathVariable Long id) { ... }
 
     @PostMapping        // POST /api/workout-service/routines
+    @ResponseStatus(HttpStatus.CREATED)  // Devuelve 201 en vez de 200
     public RoutineResponse create(@RequestBody RoutineRequest request) { ... }
 }
 ```
 
-**Sin `@RestController`** tendrias que poner `@ResponseBody` en cada metodo
-para que Spring sepa que debe convertir el objeto a JSON en vez de buscar
-un archivo HTML con ese nombre.
+### @RequestMapping y las variantes HTTP
+
+```java
+@GetMapping("/ruta")     // = @RequestMapping(method = GET)
+@PostMapping("/ruta")    // = @RequestMapping(method = POST)
+@PutMapping("/ruta")     // = @RequestMapping(method = PUT)
+@DeleteMapping("/ruta")  // = @RequestMapping(method = DELETE)
+@PatchMapping("/ruta")   // = @RequestMapping(method = PATCH)
+```
+
+Las variantes (`@GetMapping`, etc.) son simplificaciones de `@RequestMapping`.
+Usa siempre las variantes: son más legibles y explícitas.
 
 ---
 
-## @Transactional
+## @Transactional {#transactional}
 
-**Que hace:** Envuelve la ejecucion de un metodo (o todos los metodos publicos de
-una clase) dentro de una transaccion de base de datos. Si todo va bien, hace `commit`.
-Si se lanza una excepcion, hace `rollback` automatico y la BD queda como estaba.
+### Qué hace
 
-**Por que importa:** Sin transacciones, si una operacion falla a mitad (ej. guardas
-una rutina pero falla al guardar sus ejercicios), la BD queda en un estado
-inconsistente — la rutina existe pero sin ejercicios. Con `@Transactional`,
-o se guarda TODO o no se guarda NADA.
-
-### A nivel de clase vs a nivel de metodo
-
-**Ejemplo real del proyecto — `RoutineServiceImpl.java`:**
+Envuelve la ejecución de un método dentro de una transacción de base de datos:
+- Si todo va bien → `COMMIT` (los cambios se persisten)
+- Si se lanza una excepción → `ROLLBACK` automático (la BD queda como estaba)
 
 ```java
 @Service
-@Transactional  // TODOS los metodos publicos son transaccionales por defecto
+@Transactional  // Todos los métodos públicos son transaccionales por defecto
 public class RoutineServiceImpl implements RoutineService {
 
-    // Este metodo hereda @Transactional de la clase → abre transaccion,
-    // hace el save, y si no hay error hace commit
     @Override
-    public RoutineResponse create(Long programId, RoutineRequest request) {
-        // Si esto falla, rollback automatico
+    public RoutineResponse create(RoutineRequest request) {
+        // Si esto falla a mitad, el rollback deshace TODO lo que se haya hecho
         RoutineEntity saved = routineRepository.save(routine);
         return routineMapper.toResponse(saved);
     }
 
-    // Este metodo SOBREESCRIBE el @Transactional de la clase con readOnly = true
+    // Este método sobreescribe el @Transactional de la clase con readOnly = true
     @Override
     @Transactional(readOnly = true)
     public RoutineResponse findById(Long id) {
@@ -204,44 +253,161 @@ public class RoutineServiceImpl implements RoutineService {
 }
 ```
 
-### readOnly = true — por que usarlo en lecturas
+### Por qué importa: el ejemplo con cascadas
 
-`@Transactional(readOnly = true)` le dice a Hibernate: "este metodo solo lee datos,
-no va a modificar nada". Esto permite optimizaciones:
+En nuestro modelo, al guardar una `RoutineEntity` con `cascade ALL`, JPA también
+intenta guardar todos sus `RoutineExerciseEntity` hijos. Sin transacción:
 
-1. **Hibernate desactiva el dirty checking** — normalmente, al final de cada
-   transaccion, Hibernate compara todos los objetos cargados con su estado original
-   para ver si algo cambio. Con `readOnly`, se salta esa comparacion (menos CPU).
-2. **El driver JDBC puede optimizar** — algunos drivers envian la query como
-   read-only al servidor de BD, que puede usar replicas de lectura.
-3. **Documenta la intencion** — al leer el codigo sabes que ese metodo no modifica datos.
+```
+1. INSERT routine       ✓
+2. INSERT exercise_1    ✓
+3. INSERT exercise_2    ✗ (falla por constraint)
+```
 
-### Errores comunes
+Resultado sin `@Transactional`: la rutina existe en BD pero sin todos sus ejercicios.
+Estado inconsistente.
 
-- **Llamar un metodo `@Transactional` desde otro metodo de la MISMA clase:**
-  No funciona. Spring aplica `@Transactional` mediante un proxy que envuelve la clase.
-  Si llamas `this.otroMetodo()`, no pasas por el proxy y la transaccion no se crea.
+Con `@Transactional`: el fallo en el paso 3 hace rollback de los pasos 1 y 2.
+O todo o nada.
 
-  ```java
-  @Transactional
-  public void metodoA() {
-      // ESTO NO abre una nueva transaccion para metodoB,
-      // porque la llamada es interna (this.metodoB())
-      metodoB();
-  }
+### readOnly = true — optimización para lecturas
 
-  @Transactional
-  public void metodoB() { ... }
-  ```
+```java
+@Transactional(readOnly = true)
+public List<RoutineResponse> findAll() { ... }
+```
 
-- **Capturar la excepcion dentro del metodo:** Si haces try-catch y te tragas la
-  excepcion, Spring no ve que hubo error y hace commit en vez de rollback.
+Le dice a Hibernate: "este método solo lee, no modifica". Beneficios:
+1. **Desactiva el dirty checking**: Hibernate normalmente compara todos los objetos
+   cargados con su estado original al final de la transacción (para detectar cambios).
+   Con `readOnly`, se salta esa comparación → menos CPU.
+2. **Documenta la intención**: al leer el código sabes que ese método no modifica datos.
+
+### El error clásico: llamar @Transactional desde la misma clase
+
+```java
+@Transactional
+public class MiServicio {
+
+    public void metodoA() {
+        metodoB();  // ← NO abre nueva transacción, aunque metodoB tenga @Transactional
+    }
+
+    @Transactional(propagation = REQUIRES_NEW)
+    public void metodoB() { ... }
+}
+```
+
+Spring aplica `@Transactional` mediante un **proxy** que envuelve el bean.
+Las peticiones externas pasan por el proxy. Las llamadas internas (`this.metodoB()`)
+se saltan el proxy → el `@Transactional` de `metodoB` no tiene efecto.
+
+**Solución**: extraer `metodoB` a otro bean con su propio `@Transactional`.
+
+### Cuándo hace rollback
+
+Por defecto, `@Transactional` solo hace rollback con **`RuntimeException`** y **`Error`**.
+Las `checked exceptions` (que el compilador te obliga a declarar) NO hacen rollback por defecto.
+
+```java
+// ✅ Hace rollback automáticamente (son RuntimeException):
+throw new EntityNotFoundException(...);
+throw new BusinessValidationException(...);
+throw new ConflictException(...);
+
+// ❌ NO hace rollback por defecto (es checked exception):
+throw new IOException(...);
+
+// Para forzarlo:
+@Transactional(rollbackFor = IOException.class)
+```
+
+En este proyecto, todas nuestras excepciones custom extienden `RuntimeException`,
+así que el comportamiento por defecto es el correcto.
 
 ---
 
-## Proximas anotaciones (se añadiran cuando se usen en el proyecto)
+## @ExceptionHandler y @RestControllerAdvice {#exception-handler}
 
-- `@Autowired` / inyeccion por constructor — como Spring conecta los beans entre si
-- `@Valid` / `@Validated` — validacion de DTOs
-- `@ExceptionHandler` / `@ControllerAdvice` — manejo global de errores
-- `@EnableKafka`, `@KafkaListener` — cuando se integre Kafka
+### El problema que resuelven
+
+Sin manejo centralizado de errores, cada controller tendría que capturar
+sus propias excepciones con try-catch y devolver el error en el formato correcto.
+Repetitivo y fácil de inconsistente.
+
+### @RestControllerAdvice: el interceptor global
+
+```java
+// @RestControllerAdvice intercepta excepciones lanzadas en CUALQUIER
+// @RestController de la aplicación. Es un único punto para toda la gestión de errores.
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    ...
+}
+```
+
+Técnicamente es `@ControllerAdvice` + `@ResponseBody` (igual que `@RestController`).
+
+### @ExceptionHandler: asociar una excepción a un método
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    // Cuando CUALQUIER controller lance EntityNotFoundException,
+    // Spring ejecuta este método en lugar de devolver un 500 genérico.
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(
+            EntityNotFoundException ex, WebRequest request) {
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),  // 404
+                "Not Found",
+                ex.getMessage(),
+                null,
+                LocalDateTime.now(),
+                request.getDescription(false)  // "uri=/api/routines/5"
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+}
+```
+
+### El flujo completo de una excepción
+
+```
+RoutineController.create()
+    → RoutineServiceImpl.create()
+        → RoutineValidator.validateForCreate()
+            → lanza ConflictException("Ya existe rutina para MONDAY...")
+        ← ConflictException sube por la pila de llamadas
+    ← ConflictException sale del servicio
+← ConflictException sale del controller
+
+Spring intercepta la excepción (no llega al cliente como error 500)
+    ↓
+GlobalExceptionHandler.handleConflict() ← el @ExceptionHandler correcto
+    ↓
+Devuelve ResponseEntity con status 409 y cuerpo ErrorResponse
+    ↓
+Cliente recibe: HTTP 409 + JSON { "status": 409, "error": "Conflict", ... }
+```
+
+### Mapeo de excepciones a códigos HTTP en este proyecto
+
+| Excepción                        | HTTP | Cuándo                                         |
+|----------------------------------|------|------------------------------------------------|
+| `EntityNotFoundException`        | 404  | Recurso no encontrado (rutina, ejercicio, etc) |
+| `BusinessValidationException`    | 422  | Regla de negocio violada dentro del request    |
+| `ConflictException`              | 409  | Choque con estado existente en la BD           |
+| `DataIntegrityViolationException`| 409  | Constraint de BD violada (red de seguridad)    |
+| `MethodArgumentNotValidException`| 400  | Bean Validation fallida (@NotNull, @Size, etc) |
+
+---
+
+## Próximas anotaciones (se añadirán cuando se usen en el proyecto)
+
+- `@Valid` / `@Validated` — activar Bean Validation en controllers
+- `@Value` — inyectar propiedades de `application.properties` en beans
+- `@EnableKafka` / `@KafkaListener` — cuando se integre Kafka
+- `@CircuitBreaker` (Resilience4j) — cuando se implemente tolerancia a fallos
