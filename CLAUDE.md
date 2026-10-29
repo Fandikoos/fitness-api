@@ -19,10 +19,19 @@ no shippear un producto. Prioriza claridad y buenas prácticas sobre velocidad.
 - Cada microservicio tiene su propia base de datos (database per service)
 
 ### Modelo actual (workout-service)
-- `RoutineEntity` → un día de rutina (nombre, día de la semana, descripción)
-- `ExerciseEntity` → ejercicio dentro de una rutina (nombre, imagen, vídeo, orden, notas)
-- `ExerciseSetEntity` → serie de un ejercicio (número, peso, repeticiones, RPE)
-- Relaciones: Routine 1──N Exercise 1──N ExerciseSet (cascade ALL, orphanRemoval)
+- `ProgramEntity` → programa de entrenamiento (nombre, descripción, active). Solo puede haber uno activo a la vez.
+- `RoutineEntity` → un día de rutina (nombre, día de la semana, descripción). Pertenece a un Program (nullable).
+- `ExerciseTemplateEntity` → catálogo de ejercicios disponibles (nombre, grupo muscular, imageUrl, videoUrl). Independiente de cualquier rutina; se reutiliza en varias.
+- `RoutineExerciseEntity` → asignación de un ejercicio del catálogo a una rutina concreta (orden, notas, lista de series). Es la entidad "puente" entre Routine y ExerciseTemplate.
+- `ExerciseSetEntity` → serie individual (número, peso, repeticiones, RPE). Pertenece a un RoutineExercise.
+
+Jerarquía completa:
+```
+Program 1──N Routine 1──N RoutineExercise ──→ ExerciseTemplate
+                                    │
+                                    └──N ExerciseSet
+```
+Todas las relaciones padre→hijo usan `cascade ALL, orphanRemoval`.
 
 ## Cómo trabajar en este proyecto (IMPORTANTE)
 
@@ -63,6 +72,15 @@ Este es un proyecto de aprendizaje, así que:
 - Arrancar servicio: `DB_USERNAME=root DB_PASSWORD=admin ./mvnw spring-boot:run`
 - Solo compilar (útil para verificar MapStruct): `./mvnw compile`
 
+## Manejo de errores
+- Excepciones custom en `workout-service/src/main/java/com/fitness/workout/exception/`:
+  - `EntityNotFoundException` → entidad no encontrada (404)
+  - `BusinessValidationException` → regla de negocio violada (400/422)
+- `GlobalExceptionHandler` (`config/`) centraliza el mapeo de excepciones a respuestas HTTP con `ErrorResponse`.
+
 ## Documentación
 - `docs/mapstruct.md`: guía de MapStruct y cómo funcionan los mappers del proyecto
 - `docs/setup-local.md`: instrucciones de setup local
+- `docs/exceptions.md`: manejo de excepciones y GlobalExceptionHandler
+- `docs/spring-annotations.md`: referencia de anotaciones Spring usadas en el proyecto
+- `docs/hibernate-jpa.md`: notas sobre JPA, dirty checking, fetch types y cascades

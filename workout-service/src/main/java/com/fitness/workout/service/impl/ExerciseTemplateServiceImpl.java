@@ -5,10 +5,11 @@ import com.fitness.workout.dto.ExerciseTemplateResponse;
 import com.fitness.workout.dto.PageResponse;
 import com.fitness.workout.entity.ExerciseTemplateEntity;
 import com.fitness.workout.enums.MuscleGroup;
+import com.fitness.workout.exception.EntityNotFoundException;
 import com.fitness.workout.mapper.ExerciseTemplateMapper;
 import com.fitness.workout.repository.ExerciseTemplateRepository;
 import com.fitness.workout.service.ExerciseTemplateService;
-import jakarta.persistence.EntityNotFoundException;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,16 +26,11 @@ import java.util.List;
  */
 @Service
 @Transactional
+@AllArgsConstructor
 public class ExerciseTemplateServiceImpl implements ExerciseTemplateService {
 
     private final ExerciseTemplateRepository exerciseTemplateRepository;
     private final ExerciseTemplateMapper exerciseTemplateMapper;
-
-    public ExerciseTemplateServiceImpl(ExerciseTemplateRepository exerciseTemplateRepository,
-                                       ExerciseTemplateMapper exerciseTemplateMapper) {
-        this.exerciseTemplateRepository = exerciseTemplateRepository;
-        this.exerciseTemplateMapper = exerciseTemplateMapper;
-    }
 
     @Override
     public ExerciseTemplateResponse create(ExerciseTemplateRequest request) {

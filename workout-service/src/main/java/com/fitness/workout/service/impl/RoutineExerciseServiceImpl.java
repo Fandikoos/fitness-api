@@ -6,13 +6,14 @@ import com.fitness.workout.entity.ExerciseSetEntity;
 import com.fitness.workout.entity.ExerciseTemplateEntity;
 import com.fitness.workout.entity.RoutineEntity;
 import com.fitness.workout.entity.RoutineExerciseEntity;
+import com.fitness.workout.exception.EntityNotFoundException;
 import com.fitness.workout.mapper.ExerciseSetMapper;
 import com.fitness.workout.mapper.RoutineExerciseMapper;
 import com.fitness.workout.repository.ExerciseTemplateRepository;
 import com.fitness.workout.repository.RoutineExerciseRepository;
 import com.fitness.workout.repository.RoutineRepository;
 import com.fitness.workout.service.RoutineExerciseService;
-import jakarta.persistence.EntityNotFoundException;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.List;
  */
 @Service
 @Transactional
+@AllArgsConstructor
 public class RoutineExerciseServiceImpl implements RoutineExerciseService {
 
     private final RoutineExerciseRepository routineExerciseRepository;
@@ -34,18 +36,6 @@ public class RoutineExerciseServiceImpl implements RoutineExerciseService {
     private final ExerciseTemplateRepository exerciseTemplateRepository;
     private final RoutineExerciseMapper routineExerciseMapper;
     private final ExerciseSetMapper exerciseSetMapper;
-
-    public RoutineExerciseServiceImpl(RoutineExerciseRepository routineExerciseRepository,
-                                      RoutineRepository routineRepository,
-                                      ExerciseTemplateRepository exerciseTemplateRepository,
-                                      RoutineExerciseMapper routineExerciseMapper,
-                                      ExerciseSetMapper exerciseSetMapper) {
-        this.routineExerciseRepository = routineExerciseRepository;
-        this.routineRepository = routineRepository;
-        this.exerciseTemplateRepository = exerciseTemplateRepository;
-        this.routineExerciseMapper = routineExerciseMapper;
-        this.exerciseSetMapper = exerciseSetMapper;
-    }
 
     @Override
     public RoutineExerciseResponse addToRoutine(Long routineId, RoutineExerciseRequest request) {

@@ -9,6 +9,7 @@ import com.fitness.workout.entity.ProgramEntity;
 import com.fitness.workout.entity.RoutineEntity;
 import com.fitness.workout.entity.RoutineExerciseEntity;
 import com.fitness.workout.enums.DayOfWeek;
+import com.fitness.workout.exception.EntityNotFoundException;
 import com.fitness.workout.mapper.ExerciseSetMapper;
 import com.fitness.workout.mapper.RoutineMapper;
 import com.fitness.workout.repository.ExerciseTemplateRepository;
@@ -16,13 +17,13 @@ import com.fitness.workout.repository.ProgramRepository;
 import com.fitness.workout.repository.RoutineRepository;
 import com.fitness.workout.service.RoutineService;
 import com.fitness.workout.util.ListUtils;
-import jakarta.persistence.EntityNotFoundException;
+import com.fitness.workout.validation.RoutineValidator;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Implementación del servicio de rutinas.
@@ -34,8 +35,10 @@ import java.util.List;
  * se ejecuten dentro de una transacción de BD. Si algo falla, se hace rollback
  * automático y la BD queda en un estado consistente.
  */
+@Slf4j
 @Service
 @Transactional
+@AllArgsConstructor
 public class RoutineServiceImpl implements RoutineService {
 
     private final RoutineRepository routineRepository;
@@ -43,21 +46,12 @@ public class RoutineServiceImpl implements RoutineService {
     private final ExerciseTemplateRepository exerciseTemplateRepository;
     private final RoutineMapper routineMapper;
     private final ExerciseSetMapper exerciseSetMapper;
-
-    public RoutineServiceImpl(RoutineRepository routineRepository,
-                              ProgramRepository programRepository,
-                              ExerciseTemplateRepository exerciseTemplateRepository,
-                              RoutineMapper routineMapper,
-                              ExerciseSetMapper exerciseSetMapper) {
-        this.routineRepository = routineRepository;
-        this.programRepository = programRepository;
-        this.exerciseTemplateRepository = exerciseTemplateRepository;
-        this.routineMapper = routineMapper;
-        this.exerciseSetMapper = exerciseSetMapper;
-    }
+    private final RoutineValidator routineValidator;
 
     @Override
     public RoutineResponse create(RoutineRequest request) {
+        routineValidator.validateForCreate(request);
+
         RoutineEntity routine = routineMapper.toEntity(request);
 
         // Si se envía un programId, buscamos el programa y lo asignamos a la rutina
@@ -102,6 +96,8 @@ public class RoutineServiceImpl implements RoutineService {
         RoutineEntity routine = routineRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "No se encontró la rutina con id: " + id));
+
+        routineValidator.validateForUpdate(id, request);
 
         // Actualizamos los campos simples de la rutina
         routine.setName(request.name());
