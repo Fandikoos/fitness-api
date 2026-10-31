@@ -1,4 +1,4 @@
-# Rutina Gym Tracker
+Una pregu# Rutina Gym Tracker
 
 ## Qué es este proyecto
 Proyecto personal de aprendizaje de microservicios con Spring Boot 4 + Angular.
