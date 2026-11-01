@@ -28,7 +28,7 @@ public class ExerciseSetEntity {
     // Número de serie dentro del ejercicio (1, 2, 3...).
     // Permite ordenar las series y saber cuál es cuál.
     @Column(nullable = false)
-    private Integer setNumber;
+    private Integer numberSet;
 
     // BigDecimal para el peso porque evita errores de redondeo en coma flotante.
     // Ejemplo: con Double, 62.5 podría guardarse como 62.4999... internamente.

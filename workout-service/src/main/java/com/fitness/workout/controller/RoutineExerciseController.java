@@ -28,24 +28,24 @@ public class RoutineExerciseController {
         this.routineExerciseService = routineExerciseService;
     }
 
-    @PostMapping
-    public ResponseEntity<RoutineExerciseResponse> addToRoutine(@PathVariable Long routineId,
-                                                                 @Valid @RequestBody RoutineExerciseRequest request) {
-        RoutineExerciseResponse response = routineExerciseService.addToRoutine(routineId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+//    @PostMapping
+//    public ResponseEntity<RoutineExerciseResponse> addToRoutine(@PathVariable Long routineId,
+//                                                                 @Valid @RequestBody RoutineExerciseRequest request) {
+//        RoutineExerciseResponse response = routineExerciseService.addToRoutine(routineId, request);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+//    }
 
     @GetMapping
     public ResponseEntity<List<RoutineExerciseResponse>> findByRoutineId(@PathVariable Long routineId) {
         return ResponseEntity.ok(routineExerciseService.findByRoutineId(routineId));
     }
 
-    @PutMapping("/{exerciseId}")
-    public ResponseEntity<RoutineExerciseResponse> update(@PathVariable Long routineId,
-                                                           @PathVariable Long exerciseId,
-                                                           @Valid @RequestBody RoutineExerciseRequest request) {
-        return ResponseEntity.ok(routineExerciseService.update(routineId, exerciseId, request));
-    }
+//    @PutMapping("/{exerciseId}")
+//    public ResponseEntity<RoutineExerciseResponse> update(@PathVariable Long routineId,
+//                                                           @PathVariable Long exerciseId,
+//                                                           @Valid @RequestBody RoutineExerciseRequest request) {
+//        return ResponseEntity.ok(routineExerciseService.update(routineId, exerciseId, request));
+//    }
 
     @DeleteMapping("/{exerciseId}")
     public ResponseEntity<Void> delete(@PathVariable Long routineId,

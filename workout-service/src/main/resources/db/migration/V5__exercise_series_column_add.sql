@@ -1,0 +1,1 @@
+ALTER TABLE exercise_templates ADD COLUMN exercise_series INT DEFAULT 3;

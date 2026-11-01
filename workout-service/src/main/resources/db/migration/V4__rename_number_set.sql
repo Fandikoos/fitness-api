@@ -1,0 +1,1 @@
+ALTER TABLE exercise_sets RENAME COLUMN set_number TO number_set;

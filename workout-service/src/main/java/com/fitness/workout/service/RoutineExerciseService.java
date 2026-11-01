@@ -13,11 +13,11 @@ import java.util.List;
  */
 public interface RoutineExerciseService {
 
-    RoutineExerciseResponse addToRoutine(Long routineId, RoutineExerciseRequest request);
+//    RoutineExerciseResponse addToRoutine(Long routineId, RoutineExerciseRequest request);
 
     List<RoutineExerciseResponse> findByRoutineId(Long routineId);
 
-    RoutineExerciseResponse update(Long routineId, Long routineExerciseId, RoutineExerciseRequest request);
+//    RoutineExerciseResponse update(Long routineId, Long routineExerciseId, RoutineExerciseRequest request);
 
     void delete(Long routineId, Long routineExerciseId);
 }

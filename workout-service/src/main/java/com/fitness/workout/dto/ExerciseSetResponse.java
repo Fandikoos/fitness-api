@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 public record ExerciseSetResponse(
         Long id,
-        Integer setNumber,
+        Integer numberSet,
         BigDecimal weightKg,
         Integer reps,
         Integer rpe

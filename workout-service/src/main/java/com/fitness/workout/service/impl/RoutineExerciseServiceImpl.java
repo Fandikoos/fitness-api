@@ -37,37 +37,38 @@ public class RoutineExerciseServiceImpl implements RoutineExerciseService {
     private final RoutineExerciseMapper routineExerciseMapper;
     private final ExerciseSetMapper exerciseSetMapper;
 
-    @Override
-    public RoutineExerciseResponse addToRoutine(Long routineId, RoutineExerciseRequest request) {
-        RoutineEntity routine = routineRepository.findById(routineId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "No se encontró la rutina con id: " + routineId));
-
-        ExerciseTemplateEntity template = exerciseTemplateRepository.findById(request.exerciseTemplateId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "No se encontró el ejercicio del catálogo con id: " + request.exerciseTemplateId()));
-
-        // Construimos la entidad manualmente (no usamos mapper) porque necesitamos
-        // buscar las entidades relacionadas (routine, template) en la BD por sus IDs.
-        RoutineExerciseEntity routineExercise = RoutineExerciseEntity.builder()
-                .exerciseTemplate(template)
-                .routine(routine)
-                .orderInRoutine(request.orderInRoutine())
-                .notes(request.notes())
-                .build();
-
-        // Mapeamos las series y establecemos la relación bidireccional
-        if (request.sets() != null) {
-            List<ExerciseSetEntity> sets = request.sets().stream()
-                    .map(exerciseSetMapper::toEntity)
-                    .toList();
-            sets.forEach(set -> set.setRoutineExercise(routineExercise));
-            routineExercise.getSets().addAll(sets);
-        }
-
-        RoutineExerciseEntity saved = routineExerciseRepository.save(routineExercise);
-        return routineExerciseMapper.toResponse(saved);
-    }
+    // Se comenta el método addToRoutine() porque actualmente no se utiliza y su implementación es compleja.
+//    @Override
+//    public RoutineExerciseResponse addToRoutine(Long routineId, RoutineExerciseRequest request) {
+//        RoutineEntity routine = routineRepository.findById(routineId)
+//                .orElseThrow(() -> new EntityNotFoundException(
+//                        "No se encontró la rutina con id: " + routineId));
+//
+//        ExerciseTemplateEntity template = exerciseTemplateRepository.findById(request.exerciseTemplateId())
+//                .orElseThrow(() -> new EntityNotFoundException(
+//                        "No se encontró el ejercicio del catálogo con id: " + request.exerciseTemplateId()));
+//
+//        // Construimos la entidad manualmente (no usamos mapper) porque necesitamos
+//        // buscar las entidades relacionadas (routine, template) en la BD por sus IDs.
+//        RoutineExerciseEntity routineExercise = RoutineExerciseEntity.builder()
+//                .exerciseTemplate(template)
+//                .routine(routine)
+//                .orderInRoutine(request.orderInRoutine())
+//                .notes(request.notes())
+//                .build();
+//
+//        // Mapeamos las series y establecemos la relación bidireccional
+//        if (request.sets() != null) {
+//            List<ExerciseSetEntity> sets = request.sets().stream()
+//                    .map(exerciseSetMapper::toEntity)
+//                    .toList();
+//            sets.forEach(set -> set.setRoutineExercise(routineExercise));
+//            routineExercise.getSets().addAll(sets);
+//        }
+//
+//        RoutineExerciseEntity saved = routineExerciseRepository.save(routineExercise);
+//        return routineExerciseMapper.toResponse(saved);
+//    }
 
     @Override
     @Transactional(readOnly = true)
@@ -81,35 +82,36 @@ public class RoutineExerciseServiceImpl implements RoutineExerciseService {
                 .toList();
     }
 
-    @Override
-    public RoutineExerciseResponse update(Long routineId, Long routineExerciseId, RoutineExerciseRequest request) {
-        RoutineExerciseEntity routineExercise = findRoutineExerciseInRoutine(routineId, routineExerciseId);
-
-        // Si el template cambia, buscamos el nuevo
-        if (!routineExercise.getExerciseTemplate().getId().equals(request.exerciseTemplateId())) {
-            ExerciseTemplateEntity newTemplate = exerciseTemplateRepository.findById(request.exerciseTemplateId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "No se encontró el ejercicio del catálogo con id: " + request.exerciseTemplateId()));
-            routineExercise.setExerciseTemplate(newTemplate);
-        }
-
-        // Actualizamos campos simples
-        routineExercise.setOrderInRoutine(request.orderInRoutine());
-        routineExercise.setNotes(request.notes());
-
-        // Reemplazamos las series: limpiamos y añadimos las nuevas.
-        // orphanRemoval borra de la BD las series que ya no están en la lista.
-        routineExercise.getSets().clear();
-
-        List<ExerciseSetEntity> newSets = request.sets() != null
-                ? request.sets().stream().map(exerciseSetMapper::toEntity).toList()
-                : Collections.emptyList();
-
-        newSets.forEach(set -> set.setRoutineExercise(routineExercise));
-        routineExercise.getSets().addAll(newSets);
-
-        return routineExerciseMapper.toResponse(routineExercise);
-    }
+    // Se comenta el método update() porque actualmente no se utiliza y su implementación es compleja.
+//    @Override
+//    public RoutineExerciseResponse update(Long routineId, Long routineExerciseId, RoutineExerciseRequest request) {
+//        RoutineExerciseEntity routineExercise = findRoutineExerciseInRoutine(routineId, routineExerciseId);
+//
+//        // Si el template cambia, buscamos el nuevo
+//        if (!routineExercise.getExerciseTemplate().getId().equals(request.exerciseTemplateId())) {
+//            ExerciseTemplateEntity newTemplate = exerciseTemplateRepository.findById(request.exerciseTemplateId())
+//                    .orElseThrow(() -> new EntityNotFoundException(
+//                            "No se encontró el ejercicio del catálogo con id: " + request.exerciseTemplateId()));
+//            routineExercise.setExerciseTemplate(newTemplate);
+//        }
+//
+//        // Actualizamos campos simples
+//        routineExercise.setOrderInRoutine(request.orderInRoutine());
+//        routineExercise.setNotes(request.notes());
+//
+//        // Reemplazamos las series: limpiamos y añadimos las nuevas.
+//        // orphanRemoval borra de la BD las series que ya no están en la lista.
+//        routineExercise.getSets().clear();
+//
+//        List<ExerciseSetEntity> newSets = request.sets() != null
+//                ? request.sets().stream().map(exerciseSetMapper::toEntity).toList()
+//                : Collections.emptyList();
+//
+//        newSets.forEach(set -> set.setRoutineExercise(routineExercise));
+//        routineExercise.getSets().addAll(newSets);
+//
+//        return routineExerciseMapper.toResponse(routineExercise);
+//    }
 
     @Override
     public void delete(Long routineId, Long routineExerciseId) {

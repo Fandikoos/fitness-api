@@ -19,7 +19,7 @@ tendríamos que escribir a mano código repetitivo como:
 ```java
 // Sin MapStruct: tedioso y propenso a errores
 ExerciseSetEntity entity = new ExerciseSetEntity();
-entity.setSetNumber(request.setNumber());
+entity.setNumberSet(request.setNumberSet());
 entity.setWeightKg(request.weightKg());
 entity.setReps(request.reps());
 entity.setRpe(request.rpe());
@@ -304,7 +304,7 @@ ProgramEntity
   │              ├─ ExerciseTemplateEntity → delega a ExerciseTemplateMapper.toResponse()
   │              │    └─ Mapea name, muscleGroup, imageUrl, videoUrl
   │              └─ Para cada ExerciseSetEntity → delega a ExerciseSetMapper.toResponse()
-  │                   └─ Mapea setNumber, weightKg, reps, rpe
+  │                   └─ Mapea setNumberSet, weightKg, reps, rpe
   │
   └─ Resultado: ProgramResponse con todo el árbol convertido a DTOs
 ```
