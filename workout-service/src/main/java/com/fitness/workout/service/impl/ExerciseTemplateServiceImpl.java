@@ -5,10 +5,12 @@ import com.fitness.workout.dto.ExerciseTemplateResponse;
 import com.fitness.workout.dto.PageResponse;
 import com.fitness.workout.entity.ExerciseTemplateEntity;
 import com.fitness.workout.enums.MuscleGroup;
+import com.fitness.workout.exception.BusinessValidationException;
 import com.fitness.workout.exception.EntityNotFoundException;
 import com.fitness.workout.mapper.ExerciseTemplateMapper;
 import com.fitness.workout.repository.ExerciseTemplateRepository;
 import com.fitness.workout.service.ExerciseTemplateService;
+import com.fitness.workout.util.ListUtils;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -73,7 +75,16 @@ public class ExerciseTemplateServiceImpl implements ExerciseTemplateService {
 
     @Override
     public PageResponse<ExerciseTemplateResponse> findByMuscleGroup(MuscleGroup muscleGroup, Pageable pageable) {
+        if (!MuscleGroup.isValid(muscleGroup)) {
+            throw new BusinessValidationException("Grupo muscular no válido");
+        }
+
         Page<ExerciseTemplateEntity> exerciseTemplateEntities = exerciseTemplateRepository.findByMuscleGroup(muscleGroup, pageable);
+
+        if (ListUtils.isNullOrEmpty(exerciseTemplateEntities.getContent())) {
+            return new PageResponse<>(List.of(), 0, 0, 0, 0, true, true);
+        }
+
         List<ExerciseTemplateResponse> content = exerciseTemplateEntities.map(exerciseTemplateMapper::toResponse).getContent();
         return new PageResponse<>(
                 content,
