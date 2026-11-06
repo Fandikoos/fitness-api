@@ -18,7 +18,7 @@ import java.util.Optional;
 public interface ProgramRepository extends JpaRepository<ProgramEntity, Long> {
 
     // Buscar programas activos (normalmente solo debería haber uno)
-    List<ProgramEntity> findByActiveTrue();
+    Optional<ProgramEntity> findByActiveTrue();
 
     // Buscar un programa por nombre exacto (útil para evitar duplicados)
     Optional<ProgramEntity> findByName(String name);

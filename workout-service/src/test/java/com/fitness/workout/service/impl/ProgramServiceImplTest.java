@@ -4,6 +4,7 @@ import com.fitness.workout.dto.ProgramRequest;
 import com.fitness.workout.dto.ProgramResponse;
 import com.fitness.workout.entity.ProgramEntity;
 import com.fitness.workout.exception.EntityNotFoundException;
+import com.fitness.workout.exception.NotExistActiveProgramException;
 import com.fitness.workout.mapper.ProgramMapper;
 import com.fitness.workout.repository.ProgramRepository;
 import org.junit.jupiter.api.Test;
@@ -97,7 +98,7 @@ class ProgramServiceImplTest {
         ProgramResponse expected     = buildResponse(1L, "PPL",      true);
 
         when(programMapper.toEntity(request)).thenReturn(entity);
-        when(programRepository.findByActiveTrue()).thenReturn(List.of(previousActive));
+        when(programRepository.findByActiveTrue()).thenReturn(previousActive != null ? Optional.of(previousActive) : Optional.empty());
         when(programRepository.save(entity)).thenReturn(saved);
         when(programMapper.toResponse(saved)).thenReturn(expected);
 
@@ -121,7 +122,7 @@ class ProgramServiceImplTest {
         ProgramResponse expected = buildResponse(1L, "PPL", true);
 
         when(programMapper.toEntity(request)).thenReturn(entity);
-        when(programRepository.findByActiveTrue()).thenReturn(Collections.emptyList());
+        when(programRepository.findByActiveTrue()).thenReturn(Optional.empty());
         when(programRepository.save(entity)).thenReturn(saved);
         when(programMapper.toResponse(saved)).thenReturn(expected);
 
@@ -183,6 +184,29 @@ class ProgramServiceImplTest {
     }
 
     @Test
+    void should_find_active_program_when_exists() {
+        ProgramEntity activeProgram = buildEntity(1L, "PPL", true);
+        ProgramResponse expected = buildResponse(1L, "PPL", true);
+
+        when(programRepository.findByActiveTrue()).thenReturn(Optional.of(activeProgram));
+        when(programMapper.toResponse(activeProgram)).thenReturn(expected);
+
+        ProgramResponse result = programService.findActive();
+
+        assertThat(result).isEqualTo(expected);
+        verify(programRepository).findByActiveTrue();
+    }
+
+    @Test
+    void should_throw_exception_when_no_active_program_exists() {
+        when(programRepository.findByActiveTrue()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> programService.findActive())
+                .isInstanceOf(NotExistActiveProgramException.class)
+                .hasMessageContaining("No hay programas activos");
+    }
+
+    @Test
     void should_deactivateOtherPrograms_when_updatingWithActiveTrue() {
         // active == true → se desactivan los programas activos antes de activar este
         ProgramRequest request = new ProgramRequest("PPL", null, true);
@@ -191,7 +215,7 @@ class ProgramServiceImplTest {
         ProgramResponse expected     = buildResponse(1L, "PPL",     true);
 
         when(programRepository.findById(1L)).thenReturn(Optional.of(entity));
-        when(programRepository.findByActiveTrue()).thenReturn(List.of(otherActive));
+        when(programRepository.findByActiveTrue()).thenReturn(Optional.of(otherActive));
         when(programMapper.toResponse(entity)).thenReturn(expected);
 
         programService.update(1L, request);
@@ -211,7 +235,7 @@ class ProgramServiceImplTest {
         ProgramResponse expected = buildResponse(1L, "PPL", true);
 
         when(programRepository.findById(1L)).thenReturn(Optional.of(entity));
-        when(programRepository.findByActiveTrue()).thenReturn(Collections.emptyList());
+        when(programRepository.findByActiveTrue()).thenReturn(Optional.empty());
         when(programMapper.toResponse(entity)).thenReturn(expected);
 
         programService.update(1L, request);

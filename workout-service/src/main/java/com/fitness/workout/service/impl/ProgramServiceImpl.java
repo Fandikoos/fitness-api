@@ -4,6 +4,7 @@ import com.fitness.workout.dto.ProgramRequest;
 import com.fitness.workout.dto.ProgramResponse;
 import com.fitness.workout.entity.ProgramEntity;
 import com.fitness.workout.exception.EntityNotFoundException;
+import com.fitness.workout.exception.NotExistActiveProgramException;
 import com.fitness.workout.mapper.ProgramMapper;
 import com.fitness.workout.repository.ProgramRepository;
 import com.fitness.workout.service.ProgramService;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementación del servicio de programas de entrenamiento.
@@ -96,6 +98,16 @@ public class ProgramServiceImpl implements ProgramService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ProgramResponse findActive() {
+        Optional<ProgramEntity> activeProgram = programRepository.findByActiveTrue();
+        if (activeProgram.isEmpty()) {
+            throw new NotExistActiveProgramException("No hay programas activos actualmente");
+        }
+        return programMapper.toResponse(activeProgram.get());
+    }
+
+    @Override
     public void delete(Long id) {
         if (!programRepository.existsById(id)) {
             throw new EntityNotFoundException(
@@ -107,15 +119,15 @@ public class ProgramServiceImpl implements ProgramService {
     }
 
     private void deactivePossiblePrograms() {
-        List<ProgramEntity> activePrograms = programRepository.findByActiveTrue();
-        if (ListUtils.isNullOrEmpty(activePrograms)) {
+        Optional<ProgramEntity> activePrograms = programRepository.findByActiveTrue();
+        if (activePrograms.isEmpty()) {
             log.debug("No hay programas activos, no es necesario desactivar ninguno");
             return;
         }
 
-        for (ProgramEntity program : activePrograms) {
+        activePrograms.ifPresent(program -> {
             program.setActive(false);
-            log.debug("Programa desactivado: {}", program.getId());
-        }
+            log.debug("Programa con id {} desactivado", program.getId());
+        });
     }
 }

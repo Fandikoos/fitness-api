@@ -5,6 +5,7 @@ import com.fitness.workout.dto.ErrorResponse;
 import com.fitness.workout.exception.BusinessValidationException;
 import com.fitness.workout.exception.ConflictException;
 import com.fitness.workout.exception.EntityNotFoundException;
+import com.fitness.workout.exception.NotExistActiveProgramException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,11 +29,12 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final String badRequest = "Bad Request";
-    private static final String conflict = "Conflict";
-    private static final String notFound = "Not Found";
-    private static final String unprocessableEntity = "Unprocessable Entity";
-    private static final String internalServerError = "Internal Server Error";
+    private static final String BAD_REQUEST = "Bad Request";
+    private static final String CONFLICT = "Conflict";
+    private static final String NOT_FOUND = "Not Found";
+    private static final String NO_CONTENT = "No Content";
+    private static final String UNPROCESSABLE_ENTITY = "Unprocessable Entity";
+    private static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
 
     // WebRequest.getDescription(false) devuelve "uri=/api/routines/5" — eliminamos
     // el prefijo para que el campo path del ErrorResponse muestre solo la ruta limpia.
@@ -46,13 +48,27 @@ public class GlobalExceptionHandler {
             EntityNotFoundException ex, WebRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
-                notFound,
+                NOT_FOUND,
                 ex.getMessage(),
                 null,
                 Instant.now(),
                 extractPath(request)
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(NotExistActiveProgramException.class)
+    public ResponseEntity<ErrorResponse> handleNotExistActiveProgramException(
+            NotExistActiveProgramException ex, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NO_CONTENT.value(),
+                NO_CONTENT,
+                ex.getMessage(),
+                null,
+                Instant.now(),
+                extractPath(request)
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NO_CONTENT);
     }
 
     // 409 Conflict: la operación choca con el estado actual de la BD
@@ -65,7 +81,7 @@ public class GlobalExceptionHandler {
             ConflictException ex, WebRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
-                conflict,
+                CONFLICT,
                 ex.getMessage(),
                 null,
                 Instant.now(),
@@ -79,7 +95,7 @@ public class GlobalExceptionHandler {
             DataIntegrityViolationException ex, WebRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
-                conflict,
+                CONFLICT,
                 "La operación viola una restricción de integridad de datos",
                 null,
                 Instant.now(),
@@ -95,7 +111,7 @@ public class GlobalExceptionHandler {
             BusinessValidationException ex, WebRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                unprocessableEntity,
+                UNPROCESSABLE_ENTITY,
                 ex.getMessage(),
                 null,
                 Instant.now(),
@@ -121,7 +137,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                badRequest,
+                BAD_REQUEST,
                 "La petición contiene campos inválidos",
                 errors,
                 Instant.now(),
@@ -158,7 +174,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                badRequest,
+                BAD_REQUEST,
                 message,
                 null,
                 Instant.now(),
@@ -190,7 +206,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                badRequest,
+                BAD_REQUEST,
                 message,
                 null,
                 Instant.now(),
@@ -210,7 +226,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                internalServerError,
+                INTERNAL_SERVER_ERROR,
                 "Ha ocurrido un error inesperado. Consulta los logs del servidor para más detalle.",
                 null,
                 Instant.now(),

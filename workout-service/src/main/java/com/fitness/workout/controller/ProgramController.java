@@ -42,6 +42,11 @@ public class ProgramController {
         return ResponseEntity.ok(programService.findById(id));
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<ProgramResponse> findActive() {
+        return ResponseEntity.ok(programService.findActive());
+    }
+
     @GetMapping
     public ResponseEntity<List<ProgramResponse>> findAll() {
         return ResponseEntity.ok(programService.findAll());
