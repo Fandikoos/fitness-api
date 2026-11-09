@@ -8,6 +8,7 @@ import com.fitness.workout.exception.BusinessValidationException;
 import com.fitness.workout.exception.ConflictException;
 import com.fitness.workout.repository.RoutineRepository;
 import com.fitness.workout.util.ListUtils;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
@@ -25,13 +26,10 @@ import java.util.Set;
  * @Component lo registra como bean de Spring para poder inyectarlo donde haga falta.
  */
 @Component
+@AllArgsConstructor
 public class RoutineValidator {
 
     private final RoutineRepository routineRepository;
-
-    public RoutineValidator(RoutineRepository routineRepository) {
-        this.routineRepository = routineRepository;
-    }
 
     /**
      * Valida todas las reglas de negocio al crear una rutina.

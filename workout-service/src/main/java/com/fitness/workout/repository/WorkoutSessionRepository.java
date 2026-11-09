@@ -14,4 +14,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSessionEn
     List<WorkoutSessionEntity> findBySessionDateBetweenOrderBySessionDateDesc(LocalDate startDate, LocalDate endDate);
 
     Optional<WorkoutSessionEntity> findFirstByRoutineIdOrderBySessionDateDesc(Long routineId);
+
+    // Usado por WorkoutSessionValidator: comprueba si ya existe una sesión para esa rutina ese día
+    boolean existsByRoutineIdAndSessionDate(Long routineId, LocalDate sessionDate);
 }
