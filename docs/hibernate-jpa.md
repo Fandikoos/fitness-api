@@ -151,13 +151,49 @@ spring.jpa.show-sql=true
 
 # Formato mas legible
 spring.jpa.properties.hibernate.format_sql=true
+
+# Estadisticas de Hibernate por sesion (cuenta queries, tiempo, etc.)
+spring.jpa.properties.hibernate.generate_statistics=true
+logging.level.org.hibernate.stat=debug
+# En Hibernate 6 (Spring Boot 3+) las metricas por sesion usan este logger:
+logging.level.org.hibernate.engine.internal.StatisticalLoggingSessionEventListener=debug
 ```
 
 Si ves muchas queries repetidas con el mismo patron (SELECT de la misma tabla
 con distinto WHERE), probablemente tienes un N+1.
 
-**Importante:** Desactiva `show-sql` en produccion — genera muchos logs y afecta
-al rendimiento.
+**Importante:** Desactiva `show-sql` y las estadisticas en produccion — generan
+muchos logs y afectan al rendimiento.
+
+### Medicion real en este proyecto (GET /programs)
+
+Con el arbol completo `Program -> Routine -> RoutineExercise -> ExerciseSet`
+y todo en LAZY, `GET /programs` generaba:
+
+| Configuracion | Queries |
+|---|---|
+| Solo LAZY (sin optimizacion) | 11 |
+| Con `default_batch_fetch_size=16` | 5 |
+
+Las 5 queries con batch son:
+1. `SELECT * FROM programs`
+2. `SELECT * FROM routines WHERE program_id IN (1, 2, ...)`
+3. `SELECT * FROM routine_exercises WHERE routine_id IN (1, 2, ...)`
+4. `SELECT * FROM exercise_sets WHERE routine_exercise_id IN (1, 2, ...)`
+5. `SELECT * FROM exercise_templates WHERE id IN (1, 2, ...)`
+
+### Solucion pragmatica: default_batch_fetch_size
+
+En vez de cargar una coleccion LAZY por ID de uno en uno, Hibernate las agrupa
+en un `IN (?, ?, ...)` de hasta N elementos:
+
+```properties
+# Agrupar cargas LAZY en batches de hasta 16 IDs (IN clause)
+spring.jpa.properties.hibernate.default_batch_fetch_size=16
+```
+
+**Ventaja clave:** no cambia el modelo ni el contrato de la API. Es una
+optimizacion transparente que se activa con una sola linea de configuracion.
 
 ---
 
@@ -309,12 +345,64 @@ la coleccion antes de devolver el DTO.
 org.hibernate.loader.MultipleBagFetchException: cannot simultaneously fetch multiple bags
 ```
 
-**Que significa:** Intentaste hacer JOIN FETCH de dos colecciones `List` a la vez.
-Hibernate no puede hacer dos JOINs a listas simultaneamente porque genera un
-producto cartesiano.
+**Que significa:** Intentaste hacer JOIN FETCH (o `@EntityGraph`) de dos o mas
+colecciones `List` anidadas en la misma query. Hibernate llama "bag" a una `List`
+sin orden garantizado por la BD.
 
-**Solucion:** Usa `Set` en vez de `List` para las colecciones, o haz los
-JOIN FETCH en queries separadas.
+**Por que ocurre — el producto cartesiano:**
+
+Cuando haces JOIN de dos colecciones en una sola query SQL, el resultado es un
+producto cartesiano de las filas. Con 1 programa, 2 rutinas, 2 ejercicios por
+rutina y 2 series por ejercicio:
+
+```
+program_id | routine_id | exercise_id | set_id
+    1            1            1            1
+    1            1            1            2    <- set duplicado
+    1            1            2            1
+    1            1            2            2
+    1            2            1            1    <- rutina duplicada
+    1            2            1            2
+    1            2            2            1
+    1            2            2            2
+```
+
+Con una sola `List` anidada Hibernate puede reconstruir los objetos pese a los
+duplicados. Con dos `List` anidadas en la misma query, el numero de filas crece
+de forma exponencial y Hibernate no puede determinar de forma segura cuales son
+duplicados reales y cuales son filas distintas — por eso lanza la excepcion en
+lugar de devolver datos potencialmente corruptos.
+
+**Ejemplo concreto que lo provoca:**
+
+```java
+// En ProgramRepository: esto lanza MultipleBagFetchException
+@EntityGraph(attributePaths = {
+    "routines",                              // List #1
+    "routines.routineExercises",             // List #2 anidada en #1
+    "routines.routineExercises.sets"         // List #3 anidada en #2
+})
+List<ProgramEntity> findAll();
+```
+
+**Opciones para resolverlo:**
+
+1. **`default_batch_fetch_size`** (la que usamos): mantiene LAZY pero agrupa las
+   cargas en `IN (...)`. No requiere cambios en el modelo. Es la solucion mas
+   sencilla cuando el numero de queries resultante es aceptable.
+
+2. **Cambiar `List` por `Set`**: Hibernate puede hacer JOIN FETCH de multiples
+   `Set` porque los duplicados se eliminan solos. Inconveniente: pierdes el orden
+   de insercion y cambias la semantica del modelo.
+
+3. **Queries separadas con JOIN FETCH**: en vez de un solo `@EntityGraph`,
+   lanzar queries JPQL separadas (`JOIN FETCH routines`, luego `JOIN FETCH sets`)
+   y dejar que Hibernate reconcilie los resultados en memoria.
+
+4. **Refactor del modelo** (decision arquitectonica pendiente en este proyecto):
+   eliminar las `List` en el padre y hacer queries explicitas por FK
+   (`routineRepository.findByProgramId(id)`). Mas predecible pero requiere
+   gestionar cascades manualmente.
 
 ### Detached entity passed to persist
 
@@ -339,5 +427,6 @@ viene de un `findById()` dentro de la misma transaccion.
 | open-in-view | Desactivado (spring.jpa.open-in-view=false) |
 | Entidades en el API | Nunca, siempre usar DTOs |
 | CascadeType.ALL | Solo cuando el hijo no tiene sentido sin el padre |
-| N+1 | Detectar con show-sql, solucionar con JOIN FETCH |
+| N+1 | Detectar con show-sql, solucionar con batch_fetch_size o JOIN FETCH |
+| MultipleBagFetchException | No hacer @EntityGraph con varias List anidadas — usar batch_fetch_size |
 | @ToString en entidades | Excluir relaciones para evitar bucles |

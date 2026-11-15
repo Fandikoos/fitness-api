@@ -17,6 +17,7 @@ public record RoutineExerciseRequest(
         Integer orderInRoutine,
 
         // Notas específicas para esta rutina (ej. "Agarre cerrado")
+        // No se utiliza por ahora, pero se deja preparado para posibles futuras mejoras
         String notes,
 
         // @Valid propaga la validación a los objetos hijos (ExerciseSetRequest).

@@ -16,7 +16,7 @@ import java.util.List;
  * para poder organizar la rutina semanal completa.
  */
 @Entity
-@Table(name = "routines")
+@Table(name = "routines", uniqueConstraints = @UniqueConstraint(name = "uq_routine_day_per_program", columnNames = {"program_id", "day_of_week"}))
 @Getter
 @Setter
 @NoArgsConstructor

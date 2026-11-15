@@ -1,0 +1,1 @@
+ALTER TABLE exercise_templates DROP COLUMN exercise_series;

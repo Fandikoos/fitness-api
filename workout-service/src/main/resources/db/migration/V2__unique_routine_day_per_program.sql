@@ -1,0 +1,1 @@
+ALTER TABLE routines ADD UNIQUE (program_id, day_of_week);

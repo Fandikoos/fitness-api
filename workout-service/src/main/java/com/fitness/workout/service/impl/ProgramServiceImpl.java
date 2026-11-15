@@ -3,14 +3,19 @@ package com.fitness.workout.service.impl;
 import com.fitness.workout.dto.ProgramRequest;
 import com.fitness.workout.dto.ProgramResponse;
 import com.fitness.workout.entity.ProgramEntity;
+import com.fitness.workout.exception.EntityNotFoundException;
+import com.fitness.workout.exception.NotExistActiveProgramException;
 import com.fitness.workout.mapper.ProgramMapper;
 import com.fitness.workout.repository.ProgramRepository;
 import com.fitness.workout.service.ProgramService;
-import jakarta.persistence.EntityNotFoundException;
+import com.fitness.workout.util.ListUtils;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementación del servicio de programas de entrenamiento.
@@ -22,18 +27,14 @@ import java.util.List;
  * se ejecuten dentro de una transacción de BD. Si algo falla, se hace rollback
  * automático y la BD queda en un estado consistente.
  */
+@Slf4j
 @Service
 @Transactional
+@AllArgsConstructor
 public class ProgramServiceImpl implements ProgramService {
 
     private final ProgramRepository programRepository;
     private final ProgramMapper programMapper;
-
-    public ProgramServiceImpl(ProgramRepository programRepository,
-                              ProgramMapper programMapper) {
-        this.programRepository = programRepository;
-        this.programMapper = programMapper;
-    }
 
     @Override
     public ProgramResponse create(ProgramRequest request) {
@@ -42,6 +43,10 @@ public class ProgramServiceImpl implements ProgramService {
         // Si el request no envía "active", el campo queda en false por defecto
         // gracias al @Builder.Default de la entidad.
         if (request.active() != null) {
+            if (Boolean.TRUE.equals(request.active())) {
+                // Si se activa un programa, desactivamos los demás activos
+                deactivePossiblePrograms();
+            }
             program.setActive(request.active());
         }
 
@@ -79,6 +84,10 @@ public class ProgramServiceImpl implements ProgramService {
         program.setDescription(request.description());
 
         if (request.active() != null) {
+            if (Boolean.TRUE.equals(request.active())) {
+                // Si se activa un programa, desactivamos los demás activos
+                deactivePossiblePrograms();
+            }
             program.setActive(request.active());
         }
 
@@ -86,6 +95,16 @@ public class ProgramServiceImpl implements ProgramService {
         // "managed" (cargada dentro de la transacción), JPA detecta los cambios
         // automáticamente al final de la transacción (dirty checking).
         return programMapper.toResponse(program);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProgramResponse findActive() {
+        Optional<ProgramEntity> activeProgram = programRepository.findByActiveTrue();
+        if (activeProgram.isEmpty()) {
+            throw new NotExistActiveProgramException("No hay programas activos actualmente");
+        }
+        return programMapper.toResponse(activeProgram.get());
     }
 
     @Override
@@ -97,5 +116,18 @@ public class ProgramServiceImpl implements ProgramService {
         // deleteById borra el programa y, gracias a cascade ALL,
         // también todas sus rutinas, ejercicios y series.
         programRepository.deleteById(id);
+    }
+
+    private void deactivePossiblePrograms() {
+        Optional<ProgramEntity> activePrograms = programRepository.findByActiveTrue();
+        if (activePrograms.isEmpty()) {
+            log.debug("No hay programas activos, no es necesario desactivar ninguno");
+            return;
+        }
+
+        activePrograms.ifPresent(program -> {
+            program.setActive(false);
+            log.debug("Programa con id {} desactivado", program.getId());
+        });
     }
 }

@@ -1,5 +1,7 @@
 package com.fitness.workout.enums;
 
+import java.util.List;
+
 /**
  * Grupo muscular principal que trabaja un ejercicio.
  *
@@ -20,4 +22,11 @@ public enum MuscleGroup {
     ABS,          // Abdominales
     FOREARMS,     // Antebrazos
     TRAPS         // Trapecios
+    ;
+
+    private static final List<MuscleGroup> validMuscleGroups = List.of(MuscleGroup.values());
+
+    public static boolean isValid(MuscleGroup muscleGroup) {
+        return validMuscleGroups.contains(muscleGroup);
+    }
 }

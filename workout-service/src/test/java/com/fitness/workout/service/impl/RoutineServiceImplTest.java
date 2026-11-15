@@ -1,7 +1,6 @@
 package com.fitness.workout.service.impl;
 
 import com.fitness.workout.dto.RoutineExerciseRequest;
-import com.fitness.workout.dto.RoutineExerciseResponse;
 import com.fitness.workout.dto.RoutineRequest;
 import com.fitness.workout.dto.RoutineResponse;
 import com.fitness.workout.entity.ExerciseTemplateEntity;
@@ -9,12 +8,13 @@ import com.fitness.workout.entity.RoutineEntity;
 import com.fitness.workout.entity.RoutineExerciseEntity;
 import com.fitness.workout.enums.DayOfWeek;
 import com.fitness.workout.enums.MuscleGroup;
+import com.fitness.workout.exception.EntityNotFoundException;
 import com.fitness.workout.mapper.ExerciseSetMapper;
 import com.fitness.workout.mapper.RoutineMapper;
 import com.fitness.workout.repository.ExerciseTemplateRepository;
 import com.fitness.workout.repository.ProgramRepository;
 import com.fitness.workout.repository.RoutineRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.fitness.workout.validation.RoutineValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -53,6 +53,9 @@ class RoutineServiceImplTest {
 
     @Mock
     private RoutineMapper routineMapper;
+
+    @Mock
+    private RoutineValidator routineValidator;
 
     @Mock
     private ExerciseSetMapper exerciseSetMapper;

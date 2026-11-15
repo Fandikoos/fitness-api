@@ -16,5 +16,5 @@ import java.util.List;
 public interface ExerciseSetRepository extends JpaRepository<ExerciseSetEntity, Long> {
 
     // Buscar todas las series de un ejercicio en rutina, ordenadas por número de serie
-    List<ExerciseSetEntity> findByRoutineExerciseIdOrderBySetNumberAsc(Long routineExerciseId);
+    List<ExerciseSetEntity> findByRoutineExerciseIdOrderByNumberSetAsc(Long routineExerciseId);
 }

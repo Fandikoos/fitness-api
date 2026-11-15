@@ -21,5 +21,7 @@ public interface ProgramService {
 
     ProgramResponse update(Long id, ProgramRequest request);
 
+    ProgramResponse findActive();
+
     void delete(Long id);
 }
