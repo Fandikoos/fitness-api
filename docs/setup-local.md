@@ -5,7 +5,6 @@
 - **Java 21** — el lenguaje en el que está escrito el backend.
 - **Docker Desktop** — para levantar la base de datos MySQL sin instalarla directamente en tu máquina.
 
----
 
 ## ¿Qué es Docker y por qué lo usamos?
 
@@ -63,21 +62,17 @@ docker --version
 
 Deberías ver algo como `Docker version 27.x.x`.
 
-### 2. Configurar variables de entorno
+### 2. Variables de entorno
 
-El proyecto usa un archivo `.env` para las credenciales de la base de datos
-(nunca se guardan directamente en el código por seguridad).
+Las credenciales nunca se escriben directamente en el código. En su lugar, los `.properties`
+usan `${NOMBRE_VARIABLE}` y el valor real se pasa en el momento de arrancar.
 
-En la carpeta `workout-service/` ya existe un archivo `.env` con estos valores:
+**En desarrollo**, las pasas tú en la misma línea del comando (paso 4). Spring Boot las recibe
+como variables de entorno del proceso y sustituye `${DB_USERNAME}` con el valor real.
 
-```env
-DB_USERNAME=root
-DB_PASSWORD=admin
-MYSQL_ROOT_PASSWORD=admin
-```
-
-- `DB_USERNAME` / `DB_PASSWORD` — los usa Spring Boot para conectarse a MySQL.
-- `MYSQL_ROOT_PASSWORD` — lo usa Docker para configurar la contraseña de MySQL al crear el contenedor.
+**En producción (Docker)**, `compose.yaml` las inyecta directamente en el contenedor.
+La única variable que Docker Compose lee de un archivo `.env` es `MYSQL_ROOT_PASSWORD`
+(para configurar la contraseña de MySQL al crear el contenedor). Spring Boot nunca lee el `.env` directamente.
 
 ### 3. Levantar MySQL con Docker
 
@@ -106,12 +101,11 @@ Deberías ver el servicio `mysql` con estado `running`.
 Desde la misma carpeta `workout-service/`:
 
 ```bash
-./mvnw spring-boot:run
+DB_USERNAME=root DB_PASSWORD=admin ./mvnw spring-boot:run
 ```
 
-Spring Boot se conecta a MySQL automáticamente y Hibernate crea todas las tablas
-basándose en las entidades JPA (`@Entity`). Verás las queries SQL en la consola
-porque tenemos `spring.jpa.show-sql=true`.
+Spring Boot arranca automáticamente con el perfil `dev` (ver sección [Perfiles](#perfiles-dev-y-prod) más abajo).
+Verás las queries SQL en la consola porque en `dev` tenemos `spring.jpa.show-sql=true`.
 
 La aplicación estará disponible en `http://localhost:8080`.
 
@@ -124,6 +118,69 @@ curl -X POST http://localhost:8080/api/exercises \
   -H "Content-Type: application/json" \
   -d '{"name": "Press Banca", "muscleGroup": "CHEST", "exerciseType": "STRENGTH"}'
 ```
+
+---
+
+## Perfiles dev y prod
+
+Spring Boot usa perfiles para cargar configuración distinta según el entorno.
+El fichero base `application.properties` siempre se carga; encima se apila el del perfil activo:
+
+```
+application.properties              <- siempre cargado (JPA, Flyway...)
+       +
+application-dev.properties          <- si perfil activo = dev
+       o
+application-prod.properties         <- si perfil activo = prod
+```
+
+### Qué incluye cada perfil
+
+| Propiedad | `dev` | `prod` |
+|---|---|---|
+| URL de la BD | `localhost:3307` (fija) | `${SPRING_DATASOURCE_URL}` (variable de entorno) |
+| Credenciales BD | `${DB_USERNAME}` / `${DB_PASSWORD}` | `${SPRING_DATASOURCE_USERNAME}` / `${SPRING_DATASOURCE_PASSWORD}` |
+| CORS origin | `http://localhost:4200` (fijo) | `${CORS_ORIGIN}` (variable de entorno) |
+| Logs SQL de Hibernate | Activados | Desactivados |
+| Estadísticas de queries | Activadas | Desactivadas |
+
+### Cómo se activa cada perfil
+
+Spring busca el perfil activo en este orden (el primero que encuentre gana):
+
+1. Argumento al arrancar: `--spring.profiles.active=prod`
+2. Variable de entorno: `SPRING_PROFILES_ACTIVE=prod`
+3. `spring.profiles.active=...` en `application.properties`
+4. **`spring.profiles.default=dev`** <- lo que tenemos nosotros
+
+En local caemos siempre en el punto 4, perfil `dev`, sin hacer nada extra.
+En Docker, `compose.yaml` inyecta `SPRING_PROFILES_ACTIVE=prod` (punto 2).
+
+Para confirmar qué perfil está activo, busca esta línea en los logs al arrancar:
+
+```
+The following 1 profile is active: "dev"
+```
+
+### Arrancar en prod apuntando a MySQL local (para pruebas)
+
+```bash
+SPRING_PROFILES_ACTIVE=prod \
+SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/workout_db \
+SPRING_DATASOURCE_USERNAME=root \
+SPRING_DATASOURCE_PASSWORD=admin \
+CORS_ORIGIN=http://localhost:4200 \
+./mvnw spring-boot:run
+```
+
+### Arrancar todo con Docker (MySQL + Spring Boot en prod)
+
+```bash
+docker compose --profile app up
+```
+
+`docker compose up -d` sin `--profile app` solo levanta MySQL.
+El servicio `springboot` tiene `profiles: [app]` en `compose.yaml` y queda fuera a menos que lo pidas explícitamente.
 
 ---
 

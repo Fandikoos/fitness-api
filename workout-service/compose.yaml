@@ -31,9 +31,14 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
+      # Activa el perfil "prod" para que Spring use application-prod.properties
+      # (sin logs de SQL, datasource por variables de entorno, CORS configurable).
+      - 'SPRING_PROFILES_ACTIVE=prod'
       - 'SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/workout_db'
       - 'SPRING_DATASOURCE_USERNAME=root'
       - 'SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}'
+      # Origen CORS permitido en el contenedor. Cámbialo por tu dominio en producción real.
+      - 'CORS_ORIGIN=http://localhost:4200'
     ports:
       - '8080:8080'
     # depends_on con condition: espera a que el healthcheck de MySQL pase
