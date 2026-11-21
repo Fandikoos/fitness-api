@@ -62,6 +62,18 @@ Este es un proyecto de aprendizaje, así que:
 - Nombres de tests: `should_doX_when_Y()`
 - Commits en español, formato: `tipo: descripción breve` (feat, fix, refactor, docs)
 
+## Documentación OpenAPI (Swagger)
+- Librería: `springdoc-openapi-starter-webmvc-ui` (versión 3.2.0, compatible con Spring Boot 4)
+- Configuración central en `config/OpenApiConfig.java` (título, descripción, versión del servicio)
+- **Todo controller nuevo debe documentarse** con estas anotaciones obligatorias:
+  - `@Tag(name = "...", description = "...")` en la clase → agrupa los endpoints en Swagger UI
+  - `@Operation(summary = "...")` en cada método → describe qué hace el endpoint
+  - `@ApiResponse(responseCode = "...", description = "...")` por cada código HTTP relevante
+    (repetir la anotación directamente, sin el wrapper `@ApiResponses({...})` — es `@Repeatable`)
+- Los DTOs (records) **no requieren** anotaciones; springdoc los introspecciona automáticamente.
+  Añadir `@Schema` en un campo solo si el nombre es ambiguo o se quiere añadir un ejemplo.
+- Swagger UI disponible en: `http://localhost:8080/swagger-ui.html`
+
 ## Seguridad (para aprender)
 - Nunca escribas credenciales, contraseñas o secrets directamente en código o
   ficheros de configuración versionados. Usa siempre variables de entorno con ${VAR_NAME}
