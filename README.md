@@ -1,5 +1,7 @@
 # Fitness API
 
+![CI](https://github.com/Fandikoos/fitness-api/actions/workflows/ci.yml/badge.svg)
+
 Backend de **Fitness App**: microservicios con Spring Boot 4 (Java 21). Proyecto de aprendizaje de arquitectura de microservicios.
 
 - `workout-service`: programas, rutinas, catálogo de ejercicios, series y sesiones de entrenamiento.
