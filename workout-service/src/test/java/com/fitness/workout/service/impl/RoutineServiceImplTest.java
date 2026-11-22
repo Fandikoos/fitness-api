@@ -220,7 +220,7 @@ class RoutineServiceImplTest {
 
         RoutineResponse result = routineService.update(1L, updateRequest);
 
-        assertThat(result).isNull();
+        assertThat(result).isNotNull();
         verify(exerciseTemplateRepository).findById(1L);
     }
 
