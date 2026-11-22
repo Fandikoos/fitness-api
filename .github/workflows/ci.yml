@@ -1,0 +1,61 @@
+name: CI - Build and Test
+
+# Triggers: se ejecuta en cada PR contra main (para revisar antes de mergear)
+# y en cada push directo a main (para detectar roturas tras el merge).
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# El proyecto Maven está en workout-service/, no en la raíz del repo.
+# defaults.run.working-directory aplica ese directorio de trabajo a todos
+# los steps que usen "run:", sin tener que repetirlo en cada uno.
+defaults:
+  run:
+    working-directory: workout-service
+
+jobs:
+  test:
+    # ubuntu-latest incluye Docker preinstalado, lo que permite que
+    # Testcontainers levante un contenedor MySQL real durante los tests
+    # de integración sin ninguna configuración extra.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Descarga el código del repositorio en el runner.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Instala Java 21 (distribución Temurin = Eclipse Adoptium, la más usada en CI).
+      # cache: maven activa el caché de ~/.m2 de forma nativa dentro de esta misma
+      # action, ahorrando el paso separado de actions/cache.
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
+
+      # ./mvnw en lugar de mvn: usa el Maven Wrapper del proyecto, que garantiza
+      # la misma versión de Maven que en local, sin depender de lo que tenga el runner.
+      # -B (--batch-mode): desactiva la salida interactiva para que los logs de CI
+      # sean más limpios y no se quede esperando input.
+      # verify en lugar de test: ejecuta el ciclo completo (compile → test → verify),
+      # incluyendo los tests de integración con Testcontainers.
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      # Surefire es el plugin de Maven que genera informes XML/HTML con los resultados
+      # de cada test. Los subimos como artifact para poder consultarlos desde la UI de
+      # GitHub cuando un test falla en CI, sin tener que buscar en los logs.
+      # if: always() asegura que se suban incluso si el paso anterior falló
+      # (que es justo cuando más los necesitamos).
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: workout-service/target/surefire-reports/
