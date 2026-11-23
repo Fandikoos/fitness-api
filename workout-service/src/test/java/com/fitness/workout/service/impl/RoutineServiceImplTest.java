@@ -53,10 +53,19 @@ class RoutineServiceImplTest {
     private RoutineRepository routineRepository;
 
     @Mock
+    private ProgramRepository programRepository;
+
+    @Mock
     private ExerciseTemplateRepository exerciseTemplateRepository;
 
     @Mock
     private RoutineMapper routineMapper;
+
+    @Mock
+    private RoutineValidator routineValidator;
+
+    @Mock
+    private ExerciseSetMapper exerciseSetMapper;
 
     @InjectMocks
     private RoutineServiceImpl routineService;
