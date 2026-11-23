@@ -56,6 +56,7 @@ public class RoutineEntity {
     // orphanRemoval: si quitas un ejercicio de la lista, JPA lo borra de la BD.
     @OneToMany(mappedBy = "routine", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @OrderBy(value = "orderInRoutine ASC")
     private List<RoutineExerciseEntity> routineExercises = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)

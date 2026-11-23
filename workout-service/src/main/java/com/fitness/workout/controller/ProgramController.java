@@ -54,10 +54,11 @@ public class ProgramController {
 
     @Operation(summary = "Obtener el programa activo", description = "Solo puede haber un programa activo a la vez")
     @ApiResponse(responseCode = "200", description = "Programa activo encontrado")
-    @ApiResponse(responseCode = "404", description = "No hay ningún programa activo")
+    @ApiResponse(responseCode = "204", description = "No hay ningún programa activo")
     @GetMapping("/active")
     public ResponseEntity<ProgramResponse> findActive() {
-        return ResponseEntity.ok(programService.findActive());
+        ProgramResponse active = programService.findActive();
+        return active != null ? ResponseEntity.ok(active) : ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Listar todos los programas")

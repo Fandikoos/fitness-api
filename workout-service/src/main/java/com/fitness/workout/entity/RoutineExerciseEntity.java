@@ -56,5 +56,6 @@ public class RoutineExerciseEntity {
     // desde el ejercicio en rutina. Si borras el ejercicio de la rutina, se borran sus series.
     @OneToMany(mappedBy = "routineExercise", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @OrderBy(value = "numberSet ASC")
     private List<ExerciseSetEntity> sets = new ArrayList<>();
 }

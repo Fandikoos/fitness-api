@@ -130,12 +130,12 @@ public class RoutineServiceImpl implements RoutineService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoutineResponse> findByProgramId(Long programId) {
-        List<RoutineEntity> routineEntities = routineRepository.findByProgramId(programId);
-        if (ListUtils.isNullOrEmpty(routineEntities)) {
-            return new ArrayList<>();
+        if (!programRepository.existsById(programId)) {
+            throw new EntityNotFoundException("No se encontró el programa con id: " + programId);
         }
-        return routineMapper.toResponseList(routineEntities);
+        return routineMapper.toResponseList(routineRepository.findByProgramId(programId));
     }
 
     /**
