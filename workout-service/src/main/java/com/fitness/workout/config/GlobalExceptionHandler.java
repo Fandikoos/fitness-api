@@ -5,7 +5,6 @@ import com.fitness.workout.dto.ErrorResponse;
 import com.fitness.workout.exception.BusinessValidationException;
 import com.fitness.workout.exception.ConflictException;
 import com.fitness.workout.exception.EntityNotFoundException;
-import com.fitness.workout.exception.NotExistActiveProgramException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -55,20 +54,6 @@ public class GlobalExceptionHandler {
                 extractPath(request)
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(NotExistActiveProgramException.class)
-    public ResponseEntity<ErrorResponse> handleNotExistActiveProgramException(
-            NotExistActiveProgramException ex, WebRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
-                HttpStatus.NO_CONTENT.value(),
-                NO_CONTENT,
-                ex.getMessage(),
-                null,
-                Instant.now(),
-                extractPath(request)
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.NO_CONTENT);
     }
 
     // 409 Conflict: la operación choca con el estado actual de la BD

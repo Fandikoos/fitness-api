@@ -55,7 +55,6 @@ public class RoutineController {
 
     @Operation(summary = "Listar rutinas de un programa")
     @ApiResponse(responseCode = "200", description = "Lista de rutinas del programa")
-    @ApiResponse(responseCode = "404", description = "Programa no encontrado")
     @GetMapping("/program/{programId}")
     public ResponseEntity<List<RoutineResponse>> findByProgramId(@PathVariable Long programId) {
         List<RoutineResponse> routines = routineService.findByProgramId(programId);

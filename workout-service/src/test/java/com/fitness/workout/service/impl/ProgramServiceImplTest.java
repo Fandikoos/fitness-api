@@ -4,7 +4,6 @@ import com.fitness.workout.dto.ProgramRequest;
 import com.fitness.workout.dto.ProgramResponse;
 import com.fitness.workout.entity.ProgramEntity;
 import com.fitness.workout.exception.EntityNotFoundException;
-import com.fitness.workout.exception.NotExistActiveProgramException;
 import com.fitness.workout.mapper.ProgramMapper;
 import com.fitness.workout.repository.ProgramRepository;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -195,15 +193,6 @@ class ProgramServiceImplTest {
 
         assertThat(result).isEqualTo(expected);
         verify(programRepository).findByActiveTrue();
-    }
-
-    @Test
-    void should_throw_exception_when_no_active_program_exists() {
-        when(programRepository.findByActiveTrue()).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> programService.findActive())
-                .isInstanceOf(NotExistActiveProgramException.class)
-                .hasMessageContaining("No hay programas activos");
     }
 
     @Test

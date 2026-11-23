@@ -4,11 +4,9 @@ import com.fitness.workout.dto.ProgramRequest;
 import com.fitness.workout.dto.ProgramResponse;
 import com.fitness.workout.entity.ProgramEntity;
 import com.fitness.workout.exception.EntityNotFoundException;
-import com.fitness.workout.exception.NotExistActiveProgramException;
 import com.fitness.workout.mapper.ProgramMapper;
 import com.fitness.workout.repository.ProgramRepository;
 import com.fitness.workout.service.ProgramService;
-import com.fitness.workout.util.ListUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -101,10 +99,8 @@ public class ProgramServiceImpl implements ProgramService {
     @Transactional(readOnly = true)
     public ProgramResponse findActive() {
         Optional<ProgramEntity> activeProgram = programRepository.findByActiveTrue();
-        if (activeProgram.isEmpty()) {
-            throw new NotExistActiveProgramException("No hay programas activos actualmente");
-        }
-        return programMapper.toResponse(activeProgram.get());
+        log.info("Program active with id: {}", activeProgram.isPresent() ? activeProgram.get().getId() : "No hay programa activo");
+        return activeProgram.map(programMapper::toResponse).orElse(null);
     }
 
     @Override
