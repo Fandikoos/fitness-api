@@ -32,6 +32,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.fitness.workout.dto.ExerciseSetRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import java.math.BigDecimal;
+import java.util.Set;
+
 /**
  * Tests unitarios para RoutineServiceImpl.
  *
@@ -268,5 +275,67 @@ class RoutineServiceImplTest {
                 .name(name)
                 .muscleGroup(muscleGroup)
                 .build();
+    }
+
+    // --- ExerciseSetRequest: validaciones de Jakarta Bean Validation ---
+    //
+    // Usamos el Validator de Jakarta directamente, sin levantar contexto de Spring.
+    // Validation.buildDefaultValidatorFactory() crea la implementación estándar (Hibernate Validator),
+    // suficiente para comprobar que las anotaciones de constraint del DTO están bien configuradas.
+
+    // Instancia estática para reutilizarla en todos los tests de esta sección.
+    private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+    @Test
+    void should_failValidation_when_weightKgIsNull() {
+        ExerciseSetRequest request = new ExerciseSetRequest(1, null, 10, null);
+
+        Set<ConstraintViolation<ExerciseSetRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("weightKg"));
+    }
+
+    @Test
+    void should_failValidation_when_weightKgIsNegative() {
+        ExerciseSetRequest request = new ExerciseSetRequest(1, new BigDecimal("-1.0"), 10, null);
+
+        Set<ConstraintViolation<ExerciseSetRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("weightKg"));
+    }
+
+    @Test
+    void should_failValidation_when_weightKgExceedsDigitsConstraint() {
+        // 1000 kg supera Digits(integer = 3), que permite como máximo 999.99
+        ExerciseSetRequest request = new ExerciseSetRequest(1, new BigDecimal("1000.0"), 10, null);
+
+        Set<ConstraintViolation<ExerciseSetRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("weightKg"));
+    }
+
+    @Test
+    void should_failValidation_when_rpeIsZero() {
+        // RPE 0 viola @Min(1) — el esfuerzo percibido mínimo válido es 1
+        ExerciseSetRequest request = new ExerciseSetRequest(1, new BigDecimal("50.0"), 10, 0);
+
+        Set<ConstraintViolation<ExerciseSetRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("rpe"));
+    }
+
+    @Test
+    void should_failValidation_when_rpeIs11() {
+        // RPE 11 viola @Max(10) — la escala de esfuerzo percibido va de 1 a 10
+        ExerciseSetRequest request = new ExerciseSetRequest(1, new BigDecimal("50.0"), 10, 11);
+
+        Set<ConstraintViolation<ExerciseSetRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("rpe"));
     }
 }

@@ -100,9 +100,18 @@ Deberías ver el servicio `mysql` con estado `running`.
 
 Desde la misma carpeta `workout-service/`:
 
+**Git Bash / WSL:**
 ```bash
 DB_USERNAME=root DB_PASSWORD=admin ./mvnw spring-boot:run
 ```
+
+**PowerShell:**
+```powershell
+$env:DB_USERNAME="root"; $env:DB_PASSWORD="admin"; ./mvnw spring-boot:run
+```
+
+> PowerShell no soporta la sintaxis `VAR=value comando` de Unix. Hay que asignar
+> las variables con `$env:NOMBRE="valor"` antes de llamar al comando.
 
 Spring Boot arranca automáticamente con el perfil `dev` (ver sección [Perfiles](#perfiles-dev-y-prod) más abajo).
 Verás las queries SQL en la consola porque en `dev` tenemos `spring.jpa.show-sql=true`.
@@ -164,12 +173,23 @@ The following 1 profile is active: "dev"
 
 ### Arrancar en prod apuntando a MySQL local (para pruebas)
 
+**Git Bash / WSL:**
 ```bash
 SPRING_PROFILES_ACTIVE=prod \
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/workout_db \
 SPRING_DATASOURCE_USERNAME=root \
 SPRING_DATASOURCE_PASSWORD=admin \
 CORS_ORIGIN=http://localhost:4200 \
+./mvnw spring-boot:run
+```
+
+**PowerShell:**
+```powershell
+$env:SPRING_PROFILES_ACTIVE="prod"
+$env:SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3307/workout_db"
+$env:SPRING_DATASOURCE_USERNAME="root"
+$env:SPRING_DATASOURCE_PASSWORD="admin"
+$env:CORS_ORIGIN="http://localhost:4200"
 ./mvnw spring-boot:run
 ```
 
