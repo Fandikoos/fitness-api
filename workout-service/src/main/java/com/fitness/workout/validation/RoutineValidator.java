@@ -1,5 +1,6 @@
 package com.fitness.workout.validation;
 
+import com.fitness.workout.dto.ExerciseSetRequest;
 import com.fitness.workout.dto.RoutineExerciseRequest;
 import com.fitness.workout.dto.RoutineRequest;
 import com.fitness.workout.entity.RoutineEntity;
@@ -37,6 +38,7 @@ public class RoutineValidator {
     public void validateForCreate(RoutineRequest request) {
         validateNoDuplicateDayInProgram(request.programId(), request.dayOfWeek(), null);
         validateExercises(request.exercises());
+        validateNotSameNumberSetInExerciseSet(request.exercises());
     }
 
     /**
@@ -48,6 +50,7 @@ public class RoutineValidator {
     public void validateForUpdate(Long routineId, RoutineRequest request) {
         validateNoDuplicateDayInProgram(request.programId(), request.dayOfWeek(), routineId);
         validateExercises(request.exercises());
+        validateNotSameNumberSetInExerciseSet(request.exercises());
     }
 
     /**
@@ -104,6 +107,32 @@ public class RoutineValidator {
                         "Dos ejercicios no pueden tener el mismo orden en la rutina " +
                         "(orderInRoutine duplicado: " + ex.orderInRoutine() + ")"
                 );
+            }
+        }
+    }
+
+    /**
+     * Valida que dentro de cada ejercicio no haya dos series con el mismo numberSet.
+     *
+     * Usamos HashSet.add() igual que en validateExercises: detecta duplicados en una
+     * sola pasada O(n) sin importar el orden en que vengan las series en el request.
+     *
+     * Lanza BusinessValidationException (→ 422) porque el error está en el propio request.
+     */
+    private void validateNotSameNumberSetInExerciseSet(List<RoutineExerciseRequest> exercises) {
+        if (ListUtils.isNullOrEmpty(exercises)) return;
+
+        for (RoutineExerciseRequest exercise : exercises) {
+            if (ListUtils.isNullOrEmpty(exercise.sets())) continue;
+
+            Set<Integer> setNumbers = new HashSet<>();
+            for (ExerciseSetRequest set : exercise.sets()) {
+                if (!setNumbers.add(set.numberSet())) {
+                    throw new BusinessValidationException(
+                            "Un ejercicio no puede tener dos series con el mismo número " +
+                            "(numberSet duplicado: " + set.numberSet() + ")"
+                    );
+                }
             }
         }
     }
