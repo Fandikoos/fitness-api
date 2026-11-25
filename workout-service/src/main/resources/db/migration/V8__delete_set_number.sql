@@ -1,0 +1,1 @@
+ALTER TABLE exercise_sets DROP COLUMN set_number;
