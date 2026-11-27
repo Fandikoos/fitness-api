@@ -27,7 +27,7 @@ jobs:
     steps:
       # Descarga el código del repositorio en el runner.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Instala Java 21 (distribución Temurin = Eclipse Adoptium, la más usada en CI).
       # cache: maven activa el caché de ~/.m2 de forma nativa dentro de esta misma
