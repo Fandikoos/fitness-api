@@ -33,7 +33,7 @@ jobs:
       # cache: maven activa el caché de ~/.m2 de forma nativa dentro de esta misma
       # action, ahorrando el paso separado de actions/cache.
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
