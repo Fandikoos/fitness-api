@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /workout-service
+    schedule: { interval: weekly }
+    groups:     # un solo PR para todo lo de Spring, en vez de 15
+      spring:
+        patterns: ["org.springframework*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+
+
+
