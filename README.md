@@ -41,3 +41,15 @@ gh pr create --fill                        # o desde la web de GitHub
 ### Commits y títulos de PR
 En español y con el formato `tipo: descripción` (`feat`, `fix`, `refactor`, `docs`, `chore`, `test`).
 El título del PR es el que acaba como commit en `main` al hacer squash, así que cuídalo más que los commits intermedios.
+
+### PRs de Dependabot
+
+Dependabot abre PRs automáticamente cuando detecta versiones nuevas de dependencias (Maven, GitHub Actions). La regla para tratarlos:
+
+| Tipo | Ejemplo | Acción |
+|------|---------|--------|
+| **Parche** `x.y.Z` | `4.1.0 → 4.1.1` | Si la CI pasa en verde → mergear directamente |
+| **Menor** `x.Y.z` | `1.6.3 → 1.7.0` | Si la CI pasa en verde → mergear directamente |
+| **Mayor** `X.y.z` | `Spring Boot 4 → 5` | Leer las release notes. Si hay breaking changes, crear tarjeta propia en Trello |
+
+Los PRs de seguridad (CVE) tienen prioridad sobre los de versión: mergearse en cuanto la CI pase, independientemente del tipo de salto.
